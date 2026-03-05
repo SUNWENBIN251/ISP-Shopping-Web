@@ -3,8 +3,22 @@
     <div class="container">
       <h1 class="page-title">{{ $t('cart.title') }}</h1>
 
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>{{ $t('common.loading') }}</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="error" class="error-state">
+        <p class="error-message">{{ error }}</p>
+        <button @click="loadCart" class="btn-primary">
+          {{ $t('common.retry') }}
+        </button>
+      </div>
+
       <!-- 购物车为空 -->
-      <div v-if="cartItems.length === 0" class="empty-cart">
+      <div v-else-if="cartItems.length === 0" class="empty-cart">
         <div class="empty-icon">🛒</div>
         <h2>{{ $t('cart.empty') }}</h2>
         <p>{{ $t('cart.emptyDescription') }}</p>
@@ -31,9 +45,10 @@
           >
             <div class="item-col product-col">
               <div class="product-info">
-                <img :src="item.image" :alt="item.name" class="product-image" />
+                <img :src="item.image || getPlaceholder()" :alt="item.name" class="product-image" />
                 <div class="product-details">
                   <h3 class="product-name">{{ item.name }}</h3>
+                  <p class="product-condition">{{ item.condition }}</p>
                 </div>
               </div>
             </div>
@@ -47,20 +62,15 @@
                 <button
                   class="quantity-btn"
                   @click="updateQuantity(item.id, item.quantity - 1)"
-                  :disabled="item.quantity <= 1"
+                  :disabled="item.quantity <= 1 || isLoading"
                 >
                   −
                 </button>
-                <input
-                  type="number"
-                  :value="item.quantity"
-                  @change="handleQuantityChange(item.id, $event)"
-                  min="1"
-                  class="quantity-input"
-                />
+                <span class="quantity-display">{{ item.quantity }}</span>
                 <button
                   class="quantity-btn"
                   @click="updateQuantity(item.id, item.quantity + 1)"
+                  :disabled="isLoading"
                 >
                   +
                 </button>
@@ -76,6 +86,7 @@
                 class="remove-btn"
                 @click="removeItem(item.id)"
                 :title="$t('cart.remove')"
+                :disabled="isLoading"
               >
                 🗑️
               </button>
@@ -98,6 +109,7 @@
               <button
                 class="btn-primary checkout-btn"
                 @click="handleCheckout"
+                :disabled="isLoading"
               >
                 {{ $t('cart.checkout') }}
               </button>
@@ -113,49 +125,72 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getCart, updateCartItemQuantity, removeFromCart, getCartTotal } from '../utils/cart'
-import { isAuthenticated } from '../utils/auth'
+import { 
+  getCart, 
+  updateCartItemQuantity, 
+  removeFromCart 
+} from '../services/cartService'
+import { isAuthenticated } from '../services/authService'
 
 const router = useRouter()
 const { t } = useI18n()
 
 const cartItems = ref([])
+const isLoading = ref(false)
+const error = ref(null)
 
 // 计算总价
 const totalPrice = computed(() => {
-  return getCartTotal()
+  return cartItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 })
 
 // 加载购物车数据
-const loadCart = () => {
-  cartItems.value = getCart()
+const loadCart = async () => {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    cartItems.value = await getCart()
+    console.log('Cart loaded:', cartItems.value)
+  } catch (err) {
+    console.error('Failed to load cart:', err)
+    error.value = t('common.loadError')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // 更新商品数量
-const updateQuantity = (productId, quantity) => {
+const updateQuantity = async (productId, quantity) => {
   if (quantity < 1) return
-  updateCartItemQuantity(productId, quantity)
-  loadCart()
-}
-
-// 处理数量输入框变化
-const handleQuantityChange = (productId, event) => {
-  const quantity = parseInt(event.target.value) || 1
-  if (quantity < 1) {
-    event.target.value = 1
-    return
+  
+  isLoading.value = true
+  try {
+    await updateCartItemQuantity(productId, quantity)
+    await loadCart()
+    window.dispatchEvent(new Event('cartUpdated'))
+  } catch (err) {
+    console.error('Failed to update quantity:', err)
+    error.value = 'Failed to update quantity'
+  } finally {
+    isLoading.value = false
   }
-  updateCartItemQuantity(productId, quantity)
-  loadCart()
 }
 
 // 删除商品
-const removeItem = (productId) => {
-  if (confirm('确定要删除这个商品吗？')) {
-    removeFromCart(productId)
-    loadCart()
-    // 触发Header更新
+const removeItem = async (productId) => {
+  if (!confirm(t('cart.confirmRemove'))) return
+  
+  isLoading.value = true
+  try {
+    await removeFromCart(productId)
+    await loadCart()
     window.dispatchEvent(new Event('cartUpdated'))
+  } catch (err) {
+    console.error('Failed to remove item:', err)
+    error.value = 'Failed to remove item'
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -168,6 +203,11 @@ const handleCheckout = () => {
   router.push('/checkout')
 }
 
+// 获取占位图
+const getPlaceholder = () => {
+  return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZTJlMmUyIi8+PHRleHQgeD0iMTYiIHk9IjQ1IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='
+}
+
 // 监听购物车更新事件
 const handleCartUpdate = () => {
   loadCart()
@@ -178,7 +218,6 @@ onMounted(() => {
   window.addEventListener('cartUpdated', handleCartUpdate)
 })
 
-// 清理事件监听
 onUnmounted(() => {
   window.removeEventListener('cartUpdated', handleCartUpdate)
 })
@@ -199,7 +238,63 @@ onUnmounted(() => {
   font-weight: bold;
 }
 
-/* 空购物车 */
+.loading-state {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border-radius: var(--border-radius-lg);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-state {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xxl);
+}
+
+.error-message {
+  color: var(--color-error);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.btn-primary {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  transition: background-color var(--transition-base);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
+}
+
 .empty-cart {
   text-align: center;
   padding: var(--spacing-xxxl) var(--spacing-lg);
@@ -225,7 +320,6 @@ onUnmounted(() => {
   margin-bottom: var(--spacing-xl);
 }
 
-/* 购物车内容 */
 .cart-content {
   display: grid;
   grid-template-columns: 1fr 350px;
@@ -294,8 +388,14 @@ onUnmounted(() => {
 .product-name {
   font-size: var(--font-size-base);
   color: var(--color-text-primary);
-  margin: 0;
+  margin: 0 0 var(--spacing-xs) 0;
   font-weight: 500;
+}
+
+.product-condition {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  margin: 0;
 }
 
 .price-col,
@@ -346,18 +446,11 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.quantity-input {
-  width: 60px;
-  height: 32px;
+.quantity-display {
+  width: 40px;
   text-align: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-sm);
   font-size: var(--font-size-base);
-  outline: none;
-}
-
-.quantity-input:focus {
-  border-color: var(--color-primary);
+  font-weight: 500;
 }
 
 .action-col {
@@ -375,11 +468,15 @@ onUnmounted(() => {
   transition: transform var(--transition-base);
 }
 
-.remove-btn:hover {
+.remove-btn:hover:not(:disabled) {
   transform: scale(1.2);
 }
 
-/* 购物车汇总 */
+.remove-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .cart-summary {
   position: sticky;
   top: 100px;
@@ -448,10 +545,15 @@ onUnmounted(() => {
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: var(--color-primary-dark);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-secondary {
@@ -468,7 +570,6 @@ onUnmounted(() => {
   width: 100%;
 }
 
-/* 响应式设计 */
 @media (max-width: 992px) {
   .cart-content {
     grid-template-columns: 1fr;

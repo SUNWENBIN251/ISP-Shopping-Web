@@ -28,21 +28,21 @@
             <div 
               class="dropdown-item" 
               :class="{ active: currentLocale === 'zh-CN' }"
-              @click="changeLanguage('zh-CN')"
+              @click.stop="changeLanguage('zh-CN')"
             >
               {{ $t('language.zh-CN') }}
             </div>
             <div 
               class="dropdown-item" 
               :class="{ active: currentLocale === 'zh-TW' }"
-              @click="changeLanguage('zh-TW')"
+              @click.stop="changeLanguage('zh-TW')"
             >
               {{ $t('language.zh-TW') }}
             </div>
             <div 
               class="dropdown-item" 
               :class="{ active: currentLocale === 'en' }"
-              @click="changeLanguage('en')"
+              @click.stop="changeLanguage('en')"
             >
               {{ $t('language.en') }}
             </div>
@@ -94,7 +94,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getCurrentUser, logout, getCartCount } from '../utils/auth'
+import { getCurrentUser, logout } from '../services/authService'
+import { getCartSummary } from '../services/cartService'
 
 const router = useRouter()
 const { locale, t } = useI18n()
@@ -107,22 +108,23 @@ const isLoggedIn = ref(false)
 const username = ref('')
 const cartCount = ref(0)
 
-// 用户菜单
+// 菜单状态
 const showUserMenu = ref(false)
-
-// 语言菜单
 const showLanguageMenu = ref(false)
-const currentLocale = computed(() => locale.value)
 
+// 语言相关
+const currentLocale = computed(() => locale.value)
 const currentLanguageText = computed(() => {
   return t(`language.${locale.value}`)
 })
 
 // 更新用户状态
-const updateUserState = () => {
+const updateUserState = async () => {
   const user = getCurrentUser()
-  // 更新购物车数量（无论是否登录都显示）
-  cartCount.value = getCartCount()
+  
+  // 获取购物车数量
+  const summary = await getCartSummary()
+  cartCount.value = summary.count || 0
   
   if (user) {
     isLoggedIn.value = true
@@ -133,49 +135,41 @@ const updateUserState = () => {
   }
 }
 
-// 监听storage变化（用于跨标签页同步）
-const handleStorageChange = (e) => {
-  if (e.key === 'currentUser' || e.key === 'cart') {
-    updateUserState()
-  }
-}
-
-// 监听购物车更新事件
-const handleCartUpdate = () => {
-  updateUserState()
-}
-
+// 处理搜索
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
     router.push({
       path: '/search',
-      query: { keyword: searchKeyword.value }
+      query: { q: searchKeyword.value }
     })
+    searchKeyword.value = ''
   }
 }
 
+// 切换用户菜单
 const toggleUserMenu = () => {
   showUserMenu.value = !showUserMenu.value
   showLanguageMenu.value = false
 }
 
+// 切换语言菜单
 const toggleLanguageMenu = () => {
   showLanguageMenu.value = !showLanguageMenu.value
   showUserMenu.value = false
 }
 
+// 切换语言
 const changeLanguage = (lang) => {
   locale.value = lang
   localStorage.setItem('locale', lang)
   showLanguageMenu.value = false
 }
 
+// 登出
 const handleLogout = () => {
   logout()
   updateUserState()
   showUserMenu.value = false
-  // 触发自定义事件，通知其他组件
-  window.dispatchEvent(new Event('userStateChanged'))
   router.push('/')
 }
 
@@ -189,21 +183,26 @@ const handleClickOutside = (e) => {
   }
 }
 
+// 监听事件
+const handleUserStateChanged = () => {
+  updateUserState()
+}
+
+const handleCartUpdated = () => {
+  updateUserState()
+}
+
 onMounted(() => {
   updateUserState()
-  window.addEventListener('storage', handleStorageChange)
-  // 监听自定义事件（同标签页内登录/登出）
-  window.addEventListener('userStateChanged', updateUserState)
-  // 监听购物车更新事件
-  window.addEventListener('cartUpdated', handleCartUpdate)
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('userStateChanged', handleUserStateChanged)
+  window.addEventListener('cartUpdated', handleCartUpdated)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('storage', handleStorageChange)
-  window.removeEventListener('userStateChanged', updateUserState)
-  window.removeEventListener('cartUpdated', handleCartUpdate)
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('userStateChanged', handleUserStateChanged)
+  window.removeEventListener('cartUpdated', handleCartUpdated)
 })
 </script>
 
@@ -413,11 +412,6 @@ onUnmounted(() => {
 
   .action-text {
     display: none;
-  }
-
-  /* 移动端保留语言切换图标 */
-  .language-menu .action-icon {
-    display: block;
   }
 
   .nav-items {
