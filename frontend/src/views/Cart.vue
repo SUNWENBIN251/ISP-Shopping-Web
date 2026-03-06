@@ -33,8 +33,6 @@
           <div class="cart-header">
             <div class="header-col product-col">{{ $t('cart.product') }}</div>
             <div class="header-col price-col">{{ $t('cart.price') }}</div>
-            <div class="header-col quantity-col">{{ $t('cart.quantity') }}</div>
-            <div class="header-col subtotal-col">{{ $t('cart.subtotal') }}</div>
             <div class="header-col action-col">{{ $t('cart.action') }}</div>
           </div>
 
@@ -57,30 +55,6 @@
               <span class="price">¥{{ item.price.toFixed(2) }}</span>
             </div>
 
-            <div class="item-col quantity-col">
-              <div class="quantity-control">
-                <button
-                  class="quantity-btn"
-                  @click="updateQuantity(item.id, item.quantity - 1)"
-                  :disabled="item.quantity <= 1 || isLoading"
-                >
-                  −
-                </button>
-                <span class="quantity-display">{{ item.quantity }}</span>
-                <button
-                  class="quantity-btn"
-                  @click="updateQuantity(item.id, item.quantity + 1)"
-                  :disabled="isLoading"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <div class="item-col subtotal-col">
-              <span class="subtotal">¥{{ (item.price * item.quantity).toFixed(2) }}</span>
-            </div>
-
             <div class="item-col action-col">
               <button
                 class="remove-btn"
@@ -88,7 +62,7 @@
                 :title="$t('cart.remove')"
                 :disabled="isLoading"
               >
-                🗑️
+                🗑️ {{ $t('cart.remove') }}
               </button>
             </div>
           </div>
@@ -127,7 +101,6 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { 
   getCart, 
-  updateCartItemQuantity, 
   removeFromCart 
 } from '../services/cartService'
 import { isAuthenticated } from '../services/authService'
@@ -141,7 +114,7 @@ const error = ref(null)
 
 // 计算总价
 const totalPrice = computed(() => {
-  return cartItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  return cartItems.value.reduce((sum, item) => sum + item.price, 0)
 })
 
 // 加载购物车数据
@@ -155,23 +128,6 @@ const loadCart = async () => {
   } catch (err) {
     console.error('Failed to load cart:', err)
     error.value = t('common.loadError')
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// 更新商品数量
-const updateQuantity = async (productId, quantity) => {
-  if (quantity < 1) return
-  
-  isLoading.value = true
-  try {
-    await updateCartItemQuantity(productId, quantity)
-    await loadCart()
-    window.dispatchEvent(new Event('cartUpdated'))
-  } catch (err) {
-    console.error('Failed to update quantity:', err)
-    error.value = 'Failed to update quantity'
   } finally {
     isLoading.value = false
   }
@@ -335,7 +291,7 @@ onUnmounted(() => {
 
 .cart-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 1fr 0.8fr;
+  grid-template-columns: 2fr 1fr 1fr;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
   background: var(--color-primary);
@@ -346,7 +302,7 @@ onUnmounted(() => {
 
 .cart-item {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 1fr 0.8fr;
+  grid-template-columns: 2fr 1fr 1fr;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
@@ -398,59 +354,14 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.price-col,
-.subtotal-col {
+.price-col {
   text-align: center;
 }
 
-.price,
-.subtotal {
+.price {
   font-size: var(--font-size-lg);
   color: var(--color-primary);
   font-weight: bold;
-}
-
-.quantity-col {
-  display: flex;
-  justify-content: center;
-}
-
-.quantity-control {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.quantity-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  font-size: var(--font-size-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-base);
-}
-
-.quantity-btn:hover:not(:disabled) {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.quantity-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.quantity-display {
-  width: 40px;
-  text-align: center;
-  font-size: var(--font-size-base);
-  font-weight: 500;
 }
 
 .action-col {
@@ -459,17 +370,23 @@ onUnmounted(() => {
 }
 
 .remove-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
   background: none;
-  border: none;
-  font-size: var(--font-size-xl);
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+  border-radius: var(--border-radius-md);
   cursor: pointer;
-  padding: var(--spacing-xs);
-  border-radius: var(--border-radius-sm);
-  transition: transform var(--transition-base);
+  font-size: var(--font-size-base);
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .remove-btn:hover:not(:disabled) {
-  transform: scale(1.2);
+  background-color: var(--color-error);
+  color: white;
+  transform: scale(1.05);
 }
 
 .remove-btn:disabled {
@@ -608,7 +525,6 @@ onUnmounted(() => {
     align-items: flex-start;
   }
 
-  .quantity-col,
   .action-col {
     justify-content: flex-end;
   }

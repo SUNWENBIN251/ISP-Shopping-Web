@@ -170,9 +170,17 @@ const addToCart = async () => {
   if (!selectedProduct.value) return
   
   try {
-    await addItemToCart(selectedProduct.value.id, 1)
-    alert(t('productDetail.addedToCart'))
-    window.dispatchEvent(new Event('cartUpdated'))
+    const result = await addItemToCart(selectedProduct.value.id)
+    if (result.success) {
+      alert(t('productDetail.addedToCart'))
+      window.dispatchEvent(new Event('cartUpdated'))
+    } else {
+      if (result.error === 'Item already in cart') {
+        alert('This item is already in your cart')
+      } else {
+        alert(t('productDetail.addToCartError'))
+      }
+    }
   } catch (error) {
     console.error('Failed to add to cart:', error)
     alert(t('productDetail.addToCartError'))

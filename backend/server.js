@@ -176,146 +176,105 @@ app.get('/api/products/:id', (req, res) => {
 });
 
 // ==================== CART API ====================
+
+// Get cart items
 app.get('/api/cart', authenticateToken, (req, res) => {
-    db.all(
-        `SELECT 
-            p.product_id as id,
-            a.title as name,
-            a.artist,
-            a.cover_image_url as image,
-            p.price,
-            p.condition,
-            ci.quantity
-        FROM Cart_Items ci
-        JOIN Products p ON ci.product_id = p.product_id
-        JOIN Albums a ON p.album_id = a.album_id
-        WHERE ci.user_id = ?`,
-        [req.user.userId],
-        (err, items) => {
-            if (err) {
-                console.error('Database error:', err);
-                return res.status(500).json({ error: err.message });
-            }
-            res.json(items || []);
-        }
-    );
+  db.all(
+    `SELECT 
+        p.product_id as id,
+        a.title as name,
+        a.artist,
+        a.cover_image_url as image,
+        p.price,
+        p.condition
+    FROM Cart_Items ci
+    JOIN Products p ON ci.product_id = p.product_id
+    JOIN Albums a ON p.album_id = a.album_id
+    WHERE ci.user_id = ?`,
+    [req.user.userId],
+    (err, items) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(items || []);
+    }
+  );
 });
 
+// Add to cart (always quantity 1)
 app.post('/api/cart/add', authenticateToken, (req, res) => {
-    const { product_id, quantity = 1 } = req.body;
-    const userId = req.user.userId;
+  const { product_id } = req.body;
+  const userId = req.user.userId;
+  
+  // Check if product exists
+  db.get('SELECT * FROM Products WHERE product_id = ?', [product_id], (err, product) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
     
-    // First check if product exists
-    db.get('SELECT * FROM Products WHERE product_id = ?', [product_id], (err, product) => {
+    // Check if already in cart
+    db.get(
+      'SELECT * FROM Cart_Items WHERE user_id = ? AND product_id = ?',
+      [userId, product_id],
+      (err, existingItem) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        if (!product) {
-            return res.status(404).json({ error: 'Product not found' });
+          return res.status(500).json({ error: err.message });
         }
         
-        // Check if item already in cart
-        db.get(
-            'SELECT * FROM Cart_Items WHERE user_id = ? AND product_id = ?',
-            [userId, product_id],
-            (err, existingItem) => {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                
-                if (existingItem) {
-                    db.run(
-                        'UPDATE Cart_Items SET quantity = quantity + ? WHERE user_id = ? AND product_id = ?',
-                        [quantity, userId, product_id],
-                        function(err) {
-                            if (err) {
-                                return res.status(500).json({ error: err.message });
-                            }
-                            res.json({ success: true, message: 'Cart updated' });
-                        }
-                    );
-                } else {
-                    db.run(
-                        'INSERT INTO Cart_Items (user_id, product_id, quantity) VALUES (?, ?, ?)',
-                        [userId, product_id, quantity],
-                        function(err) {
-                            if (err) {
-                                return res.status(500).json({ error: err.message });
-                            }
-                            res.json({ success: true, message: 'Item added to cart' });
-                        }
-                    );
-                }
+        if (existingItem) {
+          // Product already in cart - don't add duplicate
+          return res.status(400).json({ error: 'Item already in cart' });
+        }
+        
+        // Add new item with quantity 1
+        db.run(
+          'INSERT INTO Cart_Items (user_id, product_id, quantity) VALUES (?, ?, 1)',
+          [userId, product_id],
+          function(err) {
+            if (err) {
+              return res.status(500).json({ error: err.message });
             }
+            res.json({ success: true, message: 'Item added to cart' });
+          }
         );
-    });
+      }
+    );
+  });
 });
 
-app.put('/api/cart/update', authenticateToken, (req, res) => {
-    const { product_id, quantity } = req.body;
-    const userId = req.user.userId;
-    
-    if (quantity <= 0) {
-        db.run(
-            'DELETE FROM Cart_Items WHERE user_id = ? AND product_id = ?',
-            [userId, product_id],
-            function(err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json({ success: true });
-            }
-        );
-    } else {
-        db.run(
-            'UPDATE Cart_Items SET quantity = ? WHERE user_id = ? AND product_id = ?',
-            [quantity, userId, product_id],
-            function(err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json({ success: true });
-            }
-        );
-    }
-});
-
+// Remove from cart
 app.delete('/api/cart/remove/:productId', authenticateToken, (req, res) => {
-    const productId = req.params.productId;
-    const userId = req.user.userId;
-    
-    db.run(
-        'DELETE FROM Cart_Items WHERE user_id = ? AND product_id = ?',
-        [userId, productId],
-        function(err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ success: true });
-        }
-    );
+  const productId = req.params.productId;
+  const userId = req.user.userId;
+  
+  db.run(
+    'DELETE FROM Cart_Items WHERE user_id = ? AND product_id = ?',
+    [userId, productId],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ success: true });
+    }
+  );
 });
 
-app.get('/api/cart/summary', authenticateToken, (req, res) => {
-    db.get(
-        `SELECT 
-            COALESCE(SUM(ci.quantity), 0) as count,
-            COALESCE(SUM(ci.quantity * p.price), 0) as total
-        FROM Cart_Items ci
-        JOIN Products p ON ci.product_id = p.product_id
-        WHERE ci.user_id = ?`,
-        [req.user.userId],
-        (err, summary) => {
-            if (err) {
-                console.error('Database error:', err);
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({
-                count: summary.count || 0,
-                total: summary.total || 0
-            });
-        }
-    );
+// Clear cart
+app.delete('/api/cart/clear', authenticateToken, (req, res) => {
+  db.run(
+    'DELETE FROM Cart_Items WHERE user_id = ?',
+    [req.user.userId],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ success: true });
+    }
+  );
 });
 
 // ==================== FORUM API ====================

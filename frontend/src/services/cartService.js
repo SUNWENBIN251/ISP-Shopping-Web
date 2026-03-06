@@ -2,6 +2,7 @@
 import { apiCall } from './api'
 import { isAuthenticated } from './authService'
 
+// Get cart items
 export const getCart = async () => {
   if (!isAuthenticated()) {
     return []
@@ -16,7 +17,8 @@ export const getCart = async () => {
   }
 }
 
-export const addToCart = async (productId, quantity = 1) => {
+// Add to cart
+export const addToCart = async (productId) => {
   if (!isAuthenticated()) {
     window.location.href = '/login'
     return { success: false, error: 'Not authenticated' }
@@ -26,8 +28,8 @@ export const addToCart = async (productId, quantity = 1) => {
     const response = await apiCall('/cart/add', {
       method: 'POST',
       body: JSON.stringify({ 
-        product_id: productId, 
-        quantity: quantity 
+        product_id: productId
+        // quantity removed - always 1
       })
     })
     
@@ -42,21 +44,7 @@ export const addToCart = async (productId, quantity = 1) => {
   }
 }
 
-export const updateCartItemQuantity = async (productId, quantity) => {
-  if (!isAuthenticated()) return
-  
-  try {
-    await apiCall('/cart/update', {
-      method: 'PUT',
-      body: JSON.stringify({ product_id: productId, quantity })
-    })
-    window.dispatchEvent(new Event('cartUpdated'))
-  } catch (error) {
-    console.error('Failed to update cart:', error)
-    throw error
-  }
-}
-
+// Remove from cart
 export const removeFromCart = async (productId) => {
   if (!isAuthenticated()) return
   
@@ -71,19 +59,32 @@ export const removeFromCart = async (productId) => {
   }
 }
 
+// Clear cart
+export const clearCart = async () => {
+  if (!isAuthenticated()) return
+  
+  try {
+    await apiCall('/cart/clear', {
+      method: 'DELETE'
+    })
+    window.dispatchEvent(new Event('cartUpdated'))
+  } catch (error) {
+    console.error('Failed to clear cart:', error)
+    throw error
+  }
+}
+
+// Get cart summary (count only, no total needed but keeping for compatibility)
 export const getCartSummary = async () => {
   if (!isAuthenticated()) {
-    return { count: 0, total: 0 }
+    return { count: 0 }
   }
   
   try {
-    const data = await apiCall('/cart/summary')
-    return {
-      count: data.count || 0,
-      total: data.total || 0
-    }
+    const cart = await getCart()
+    return { count: cart.length }
   } catch (error) {
     console.error('Failed to get cart summary:', error)
-    return { count: 0, total: 0 }
+    return { count: 0 }
   }
 }
