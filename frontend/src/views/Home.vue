@@ -1,169 +1,212 @@
 <template>
   <div class="home">
-    <!-- 第一板块：占满整个视口 -->
-    <section class="hero-section">
-      <!-- 秋叶装饰元素 -->
-      <div class="phoenix-decoration">
-        <div class="phoenix-flower flower-1">🍁</div>
-        <div class="phoenix-flower flower-2">🍂</div>
-        <div class="phoenix-flower flower-3">🍁</div>
-        <div class="phoenix-flower flower-4">🍂</div>
-        <div class="phoenix-petal petal-1"></div>
-        <div class="phoenix-petal petal-2"></div>
-        <div class="phoenix-petal petal-3"></div>
-        <div class="phoenix-petal petal-4"></div>
-      </div>
-      <div class="container hero-container">
-        <!-- 左半边：CD机动画 -->
-        <div class="cd-player-wrapper">
-          <div class="cd-player">
-            <div class="cd-disc">
-              <div class="cd-center"></div>
-            </div>
-          </div>
-        </div>
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>{{ $t('common.loading') }}</p>
+    </div>
 
-        <!-- 右半边：论坛数据展示 -->
-        <div class="forum-preview">
-          <h2 class="forum-title">{{ $t('home.latestUpdates') }}</h2>
-          <div class="forum-list">
-            <div
-              v-for="(item, index) in forumData"
-              :key="index"
-              class="forum-item"
-            >
-              <div class="forum-item-header">
-                <span class="forum-user">{{ item.user }}</span>
-                <span class="forum-time">{{ item.time }}</span>
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state">
+      <p class="error-message">{{ error }}</p>
+      <button @click="loadData" class="btn-primary">
+        {{ $t('common.retry') }}
+      </button>
+    </div>
+
+    <!-- Content -->
+    <template v-else>
+      <!-- 第一板块：占满整个视口 -->
+      <section class="hero-section">
+        <!-- 秋叶装饰元素 -->
+        <div class="phoenix-decoration">
+          <div class="phoenix-flower flower-1">🍁</div>
+          <div class="phoenix-flower flower-2">🍂</div>
+          <div class="phoenix-flower flower-3">🍁</div>
+          <div class="phoenix-flower flower-4">🍂</div>
+          <div class="phoenix-petal petal-1"></div>
+          <div class="phoenix-petal petal-2"></div>
+          <div class="phoenix-petal petal-3"></div>
+          <div class="phoenix-petal petal-4"></div>
+        </div>
+        <div class="container hero-container">
+          <!-- 左半边：CD机动画 -->
+          <div class="cd-player-wrapper">
+            <div class="cd-player">
+              <div class="cd-disc">
+                <div class="cd-center"></div>
               </div>
-              <div class="forum-content">{{ item.content }}</div>
             </div>
           </div>
-          <div class="forum-more" @click="$router.push('/forum')">
-            {{ $t('home.viewMore') }} →
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- 第二板块：商品展示 -->
-    <section class="products-section">
-      <div class="container">
-        <h2 class="section-title">{{ $t('home.featuredProducts') }}</h2>
-        <div class="products-grid">
-          <div
-            v-for="product in products"
-            :key="product.id"
-            class="product-card"
-            @click="$router.push(`/product/${product.id}`)"
-          >
-            <div class="product-image">
-              <img :src="product.image" :alt="product.name" />
+          <!-- 右半边：论坛数据展示 -->
+          <div class="forum-preview">
+            <h2 class="forum-title">{{ $t('home.latestUpdates') }}</h2>
+            <div class="forum-list">
+              <div
+                v-if="forumMessages.length === 0"
+                class="forum-empty"
+              >
+                <p>{{ $t('home.noMessages') }}</p>
+              </div>
+              <div
+                v-else
+                v-for="item in forumMessages"
+                :key="item.id"
+                class="forum-item"
+              >
+                <div class="forum-item-header">
+                  <span class="forum-user">{{ item.username || $t('home.anonymous') }}</span>
+                  <span class="forum-time">{{ formatTime(item.created_at) }}</span>
+                </div>
+                <div class="forum-content">{{ item.content }}</div>
+              </div>
             </div>
-            <div class="product-info">
-              <p class="product-name">{{ product.name }}</p>
+            <div class="forum-more" @click="$router.push('/forum')">
+              {{ $t('home.viewMore') }} →
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <!-- 第二板块：Featured Albums -->
+      <section class="albums-section">
+        <div class="container">
+          <h2 class="section-title">{{ $t('home.featuredAlbums') }}</h2>
+          
+          <div v-if="albums.length === 0" class="no-albums">
+            <p>{{ $t('home.noAlbums') }}</p>
+          </div>
+          
+          <div v-else class="albums-grid">
+            <div
+              v-for="album in albums"
+              :key="album.id"
+              class="album-card"
+              @click="$router.push(`/album/${album.id}`)"
+            >
+              <div class="album-image">
+                <img 
+                  :src="album.image || getRecordPlaceholder(album.id)" 
+                  :alt="album.title"
+                  @error="handleImageError"
+                />
+              </div>
+              <div class="album-info">
+                <p class="album-title">{{ album.title }}</p>
+                <p class="album-artist">{{ album.artist }}</p>
+                <p class="album-count">{{ album.product_count }} copies available</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getAlbums } from '../services/albumService'
+import { getForumMessages } from '../services/forumService'
 
 const { t } = useI18n()
 
-// 设备类型检测（暂时只实现电脑端）
+// State
+const isLoading = ref(true)
+const error = ref(null)
+const albums = ref([])
+const forumMessages = ref([])
 const isMobile = ref(false)
 
-onMounted(() => {
-  // 检测设备类型
-  const checkDevice = () => {
-    // 暂时只做电脑端，移动端检测留空
-    isMobile.value = window.innerWidth < 768
-  }
-  checkDevice()
-  window.addEventListener('resize', checkDevice)
-})
+// Load data from database
+const loadData = async () => {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    console.log('📀 Loading albums from database...')
+    const albumsData = await getAlbums()
+    console.log('✅ Albums loaded:', albumsData)
+    
+    if (albumsData && albumsData.length > 0) {
+      albums.value = albumsData.map(album => ({
+        id: album.album_id,
+        title: album.title,
+        artist: album.artist,
+        image: album.cover_image_url,
+        product_count: album.product_count || 0
+      }))
+    } else {
+      console.log('⚠️ No albums found in database')
+      albums.value = []
+    }
 
-// 论坛假数据（使用i18n）
-const forumData = computed(() => [
-  {
-    user: t('home.forum.user1'),
-    time: t('home.forum.time1'),
-    content: t('home.forum.content1')
-  },
-  {
-    user: t('home.forum.user2'),
-    time: t('home.forum.time2'),
-    content: t('home.forum.content2')
-  },
-  {
-    user: t('home.forum.user3'),
-    time: t('home.forum.time3'),
-    content: t('home.forum.content3')
-  },
-  {
-    user: t('home.forum.user4'),
-    time: t('home.forum.time4'),
-    content: t('home.forum.content4')
-  },
-  {
-    user: t('home.forum.user5'),
-    time: t('home.forum.time5'),
-    content: t('home.forum.content5')
-  },
-  {
-    user: t('home.forum.user6'),
-    time: t('home.forum.time6'),
-    content: t('home.forum.content6')
-  },
-  {
-    user: t('home.forum.user7'),
-    time: t('home.forum.time7'),
-    content: t('home.forum.content7')
-  },
-  {
-    user: t('home.forum.user8'),
-    time: t('home.forum.time3'),
-    content: t('home.forum.content8')
-  },
-  {
-    user: t('home.forum.user9'),
-    time: t('home.forum.time4'),
-    content: t('home.forum.content9')
-  },
-  {
-    user: t('home.forum.user10'),
-    time: t('home.forum.time5'),
-    content: t('home.forum.content10')
+    console.log('💬 Loading forum messages...')
+    const messages = await getForumMessages(10)
+    
+    if (messages && messages.length > 0) {
+      forumMessages.value = messages
+    } else {
+      forumMessages.value = []
+    }
+
+  } catch (err) {
+    console.error('❌ Failed to load home data:', err)
+    error.value = t('common.loadError')
+  } finally {
+    isLoading.value = false
   }
-])
+}
+
+// Format time for display
+const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  
+  const now = new Date()
+  const date = new Date(timestamp)
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) {
+    return t('home.justNow')
+  } else if (diffMins < 60) {
+    return t('home.minutesAgo', { count: diffMins })
+  } else if (diffHours < 24) {
+    return t('home.hoursAgo', { count: diffHours })
+  } else {
+    return t('home.daysAgo', { count: diffDays })
+  }
+}
+
+// Handle image load error
+const handleImageError = (e) => {
+  e.target.src = getRecordPlaceholder(1)
+}
 
 // 生成唱片封面占位图（SVG）
 const getRecordPlaceholder = (id) => {
   const colors = [
-    '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', // 红色系
-    '#ef4444', '#f87171', '#fca5a5', '#fecaca', // 浅红色系
-    '#1f2937', '#374151', '#4b5563', '#6b7280', // 灰色系
-    '#111827', '#1f2937', '#374151', '#4b5563'  // 深灰色系
+    '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d',
+    '#ef4444', '#f87171', '#fca5a5', '#fecaca',
+    '#1f2937', '#374151', '#4b5563', '#6b7280',
+    '#111827', '#1f2937', '#374151', '#4b5563'
   ]
-  const color = colors[id % colors.length]
-  const color2 = colors[(id + 1) % colors.length]
+  const color = colors[(id || 1) % colors.length]
+  const color2 = colors[((id || 1) + 1) % colors.length]
   
-  // 创建SVG唱片封面占位图
   const svg = `
     <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="grad${id}" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="grad${id || 1}" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
           <stop offset="100%" style="stop-color:${color2};stop-opacity:1" />
         </linearGradient>
       </defs>
-      <rect width="300" height="300" fill="url(#grad${id})"/>
+      <rect width="300" height="300" fill="url(#grad${id || 1})"/>
       <circle cx="150" cy="150" r="80" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
       <circle cx="150" cy="150" r="50" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
       <circle cx="150" cy="150" r="20" fill="rgba(255,255,255,0.4)"/>
@@ -174,164 +217,82 @@ const getRecordPlaceholder = (id) => {
   return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
 }
 
-// 商品假数据（30个，使用i18n）
-const products = computed(() => [
-  {
-    id: 1,
-    name: t('home.products.product1'),
-    image: getRecordPlaceholder(1)
-  },
-  {
-    id: 2,
-    name: t('home.products.product2'),
-    image: getRecordPlaceholder(2)
-  },
-  {
-    id: 3,
-    name: t('home.products.product3'),
-    image: getRecordPlaceholder(3)
-  },
-  {
-    id: 4,
-    name: t('home.products.product4'),
-    image: getRecordPlaceholder(4)
-  },
-  {
-    id: 5,
-    name: t('home.products.product5'),
-    image: getRecordPlaceholder(5)
-  },
-  {
-    id: 6,
-    name: t('home.products.product6'),
-    image: getRecordPlaceholder(6)
-  },
-  {
-    id: 7,
-    name: t('home.products.product7'),
-    image: getRecordPlaceholder(7)
-  },
-  {
-    id: 8,
-    name: t('home.products.product8'),
-    image: getRecordPlaceholder(8)
-  },
-  {
-    id: 9,
-    name: t('home.products.product9'),
-    image: getRecordPlaceholder(9)
-  },
-  {
-    id: 10,
-    name: t('home.products.product10'),
-    image: getRecordPlaceholder(10)
-  },
-  {
-    id: 11,
-    name: t('home.products.product11'),
-    image: getRecordPlaceholder(11)
-  },
-  {
-    id: 12,
-    name: t('home.products.product12'),
-    image: getRecordPlaceholder(12)
-  },
-  {
-    id: 13,
-    name: t('home.products.product13'),
-    image: getRecordPlaceholder(13)
-  },
-  {
-    id: 14,
-    name: t('home.products.product14'),
-    image: getRecordPlaceholder(14)
-  },
-  {
-    id: 15,
-    name: t('home.products.product15'),
-    image: getRecordPlaceholder(15)
-  },
-  {
-    id: 16,
-    name: t('home.products.product16'),
-    image: getRecordPlaceholder(16)
-  },
-  {
-    id: 17,
-    name: t('home.products.product17'),
-    image: getRecordPlaceholder(17)
-  },
-  {
-    id: 18,
-    name: t('home.products.product18'),
-    image: getRecordPlaceholder(18)
-  },
-  {
-    id: 19,
-    name: t('home.products.product19'),
-    image: getRecordPlaceholder(19)
-  },
-  {
-    id: 20,
-    name: t('home.products.product20'),
-    image: getRecordPlaceholder(20)
-  },
-  {
-    id: 21,
-    name: t('home.products.product21'),
-    image: getRecordPlaceholder(21)
-  },
-  {
-    id: 22,
-    name: t('home.products.product22'),
-    image: getRecordPlaceholder(22)
-  },
-  {
-    id: 23,
-    name: t('home.products.product23'),
-    image: getRecordPlaceholder(23)
-  },
-  {
-    id: 24,
-    name: t('home.products.product24'),
-    image: getRecordPlaceholder(24)
-  },
-  {
-    id: 25,
-    name: t('home.products.product25'),
-    image: getRecordPlaceholder(25)
-  },
-  {
-    id: 26,
-    name: t('home.products.product26'),
-    image: getRecordPlaceholder(26)
-  },
-  {
-    id: 27,
-    name: t('home.products.product27'),
-    image: getRecordPlaceholder(27)
-  },
-  {
-    id: 28,
-    name: t('home.products.product28'),
-    image: getRecordPlaceholder(28)
-  },
-  {
-    id: 29,
-    name: t('home.products.product29'),
-    image: getRecordPlaceholder(29)
-  },
-  {
-    id: 30,
-    name: t('home.products.product30'),
-    image: getRecordPlaceholder(30)
-  }
-])
+// 检测设备类型
+const checkDevice = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+// Lifecycle
+onMounted(() => {
+  checkDevice()
+  window.addEventListener('resize', checkDevice)
+  loadData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkDevice)
+})
 </script>
 
 <style scoped>
 .home {
   width: 100%;
+}
+
+/* Loading State */
+.loading-state {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #FDC1A7;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(220, 38, 38, 0.3);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.error-state {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #FDC1A7;
+}
+
+.error-message {
+  color: var(--color-error);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.btn-primary {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  transition: background-color var(--transition-base);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
 }
 
 /* 第一板块：占满整个视口 */
@@ -522,13 +483,21 @@ const products = computed(() => [
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  /* 隐藏滚动条但保持滚动功能 */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .forum-list::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
+}
+
+.forum-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
 }
 
 .forum-item {
@@ -581,8 +550,8 @@ const products = computed(() => [
   background-color: var(--color-accent);
 }
 
-/* 第二板块：商品展示 */
-.products-section {
+/* 第二板块：Albums Section */
+.albums-section {
   padding: var(--spacing-xxl) 0;
   background: var(--color-bg);
 }
@@ -595,15 +564,20 @@ const products = computed(() => [
   font-weight: bold;
 }
 
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: var(--spacing-lg);
-  /* 响应式：最小2列，最大5列 */
-  /* 暂时只实现电脑端，移动端样式留空 */
+.no-albums {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-lg);
 }
 
-.product-card {
+.albums-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.album-card {
   background: var(--color-bg);
   border-radius: var(--border-radius-lg);
   overflow: hidden;
@@ -612,58 +586,67 @@ const products = computed(() => [
   transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
-.product-card:hover {
+.album-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
 }
 
-.product-image {
+.album-image {
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--color-bg-light);
 }
 
-.product-image img {
+.album-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform var(--transition-slow);
 }
 
-.product-card:hover .product-image img {
+.album-card:hover .album-image img {
   transform: scale(1.05);
 }
 
-.product-info {
+.album-info {
   padding: var(--spacing-md);
 }
 
-.product-name {
-  font-size: var(--font-size-base);
+.album-title {
+  font-size: var(--font-size-lg);
   color: var(--color-text-primary);
-  margin: 0;
+  margin: 0 0 var(--spacing-xs) 0;
+  font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 响应式设计 - 暂时只做电脑端 */
-/* 移动端样式将在后续开发中实现 */
-@media (max-width: 1400px) {
-  .products-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+.album-artist {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-xs) 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.album-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  margin: 0;
+}
+
+/* 响应式设计 */
 @media (max-width: 1200px) {
-  .products-grid {
+  .albums-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
 @media (max-width: 992px) {
-  .products-grid {
+  .albums-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   
@@ -683,8 +666,9 @@ const products = computed(() => [
   }
 }
 
-/* 移动端样式暂时留空，将在后续开发中实现 */
 @media (max-width: 767.98px) {
-  /* 移动端样式待实现 */
+  .albums-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

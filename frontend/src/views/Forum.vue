@@ -9,8 +9,22 @@
       <div class="leaf leaf-5">🍂</div>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>{{ $t('common.loading') }}</p>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state">
+      <p class="error-message">{{ error }}</p>
+      <button @click="loadMessages" class="btn-primary">
+        {{ $t('common.retry') }}
+      </button>
+    </div>
+
     <!-- 气泡容器 -->
-    <div class="bubbles-container" ref="bubblesContainer" :style="{ height: bubblesContainerHeight + 'px' }">
+    <div v-else class="bubbles-container" ref="bubblesContainer" :style="{ height: bubblesContainerHeight + 'px' }">
       <div
         v-for="(bubble, index) in bubbles"
         :key="bubble.id"
@@ -25,8 +39,8 @@
       >
         <div class="bubble-content">
           <div class="bubble-header">
-            <span class="bubble-user">{{ bubble.user }}</span>
-            <span class="bubble-time">{{ bubble.time }}</span>
+            <span class="bubble-user">{{ bubble.username || $t('home.anonymous') }}</span>
+            <span class="bubble-time">{{ formatTime(bubble.created_at) }}</span>
           </div>
           <div class="bubble-text">{{ bubble.content }}</div>
         </div>
@@ -48,10 +62,13 @@
           <button
             class="submit-btn"
             @click="handleSubmit"
-            :disabled="!newMessage.trim() || newMessage.length > 144"
+            :disabled="!newMessage.trim() || newMessage.length > 144 || !isAuthenticated"
           >
             {{ $t('forum.submit') }}
           </button>
+        </div>
+        <div v-if="!isAuthenticated" class="login-prompt">
+          <router-link to="/login">{{ $t('forum.loginToPost') }}</router-link>
         </div>
       </div>
     </div>
@@ -61,6 +78,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getForumMessages, postMessage } from '../services/forumService'
+import { isAuthenticated as checkAuth } from '../services/authService'
 
 const { t } = useI18n()
 
@@ -70,122 +89,62 @@ const inputPanel = ref(null)
 const newMessage = ref('')
 const bubblesContainerHeight = ref(0)
 
-// 假数据
-const initialBubbles = [
-  {
-    id: 1,
-    user: '音乐爱好者',
-    time: '2小时前',
-    content: '刚收到这张黑胶，音质太棒了！强烈推荐给大家。',
-    size: 180,
-    x: 0,
-    y: 0,
-    vx: 0.5,
-    vy: 0.3
-  },
-  {
-    id: 2,
-    user: '唱片收藏家',
-    time: '5小时前',
-    content: '有没有人知道这张专辑的发行年份？想了解一下历史背景。',
-    size: 200,
-    x: 0,
-    y: 0,
-    vx: -0.4,
-    vy: 0.5
-  },
-  {
-    id: 3,
-    user: '新手小白',
-    time: '1天前',
-    content: '第一次买二手唱片，需要注意什么吗？求大神指点！',
-    size: 160,
-    x: 0,
-    y: 0,
-    vx: 0.6,
-    vy: -0.4
-  },
-  {
-    id: 4,
-    user: '老唱片迷',
-    time: '1天前',
-    content: '分享一个保养黑胶的小技巧：定期清洁很重要，可以用专门的清洁液。',
-    size: 220,
-    x: 0,
-    y: 0,
-    vx: -0.5,
-    vy: 0.4
-  },
-  {
-    id: 5,
-    user: '摇滚乐迷',
-    time: '2天前',
-    content: '这张专辑的B面歌曲其实更精彩，大家有听过吗？',
-    size: 170,
-    x: 0,
-    y: 0,
-    vx: 0.4,
-    vy: 0.6
-  },
-  {
-    id: 6,
-    user: '爵士爱好者',
-    time: '2天前',
-    content: '最近迷上了爵士乐，有没有好的入门专辑推荐？',
-    size: 190,
-    x: 0,
-    y: 0,
-    vx: -0.6,
-    vy: -0.3
-  },
-  {
-    id: 7,
-    user: '古典音乐',
-    time: '3天前',
-    content: '贝多芬的这张交响曲版本很多，哪个版本最值得收藏？',
-    size: 210,
-    x: 0,
-    y: 0,
-    vx: 0.3,
-    vy: -0.5
-  },
-  {
-    id: 8,
-    user: '流行音乐',
-    time: '3天前',
-    content: '80年代的流行音乐真的很有味道，现在听还是那么经典。',
-    size: 175,
-    x: 0,
-    y: 0,
-    vx: -0.3,
-    vy: 0.7
-  },
-  {
-    id: 9,
-    user: '独立音乐',
-    time: '4天前',
-    content: '小众乐队的唱片越来越难找了，大家有什么渠道推荐吗？',
-    size: 185,
-    x: 0,
-    y: 0,
-    vx: 0.7,
-    vy: 0.2
-  },
-  {
-    id: 10,
-    user: '音乐分享',
-    time: '5天前',
-    content: '今天淘到一张绝版唱片，品相很好，价格也很合理，太开心了！',
-    size: 195,
-    x: 0,
-    y: 0,
-    vx: -0.2,
-    vy: -0.6
-  }
-]
-
+// State
+const isLoading = ref(true)
+const error = ref(null)
 const bubbles = ref([])
+const isAuthenticated = ref(false)
+
 let animationId = null
+
+// 格式化时间
+const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  
+  const now = new Date()
+  const date = new Date(timestamp)
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) {
+    return t('home.justNow')
+  } else if (diffMins < 60) {
+    return t('home.minutesAgo', { count: diffMins })
+  } else if (diffHours < 24) {
+    return t('home.hoursAgo', { count: diffHours })
+  } else {
+    return t('home.daysAgo', { count: diffDays })
+  }
+}
+
+// 从数据库加载消息
+const loadMessages = async () => {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    console.log('💬 Loading forum messages from database...')
+    const messages = await getForumMessages(50) // Get up to 50 messages
+    console.log('✅ Forum messages loaded:', messages)
+    
+    if (messages && messages.length > 0) {
+      // Initialize bubble positions after we have data
+      setTimeout(() => {
+        initBubbles(messages)
+      }, 100)
+    } else {
+      console.log('⚠️ No forum messages found in database')
+      bubbles.value = []
+    }
+  } catch (err) {
+    console.error('❌ Failed to load forum messages:', err)
+    error.value = t('common.loadError')
+  } finally {
+    isLoading.value = false
+  }
+}
 
 // 更新气泡容器高度
 const updateBubblesContainerHeight = () => {
@@ -197,8 +156,8 @@ const updateBubblesContainerHeight = () => {
 }
 
 // 初始化气泡位置
-const initBubbles = () => {
-  if (!bubblesContainer.value) return
+const initBubbles = (messages) => {
+  if (!bubblesContainer.value || !messages || messages.length === 0) return
   
   updateBubblesContainerHeight()
   
@@ -206,12 +165,17 @@ const initBubbles = () => {
   const containerWidth = container.clientWidth
   const containerHeight = bubblesContainerHeight.value
   
-  bubbles.value = initialBubbles.map((bubble, index) => ({
-    ...bubble,
-    x: Math.random() * (containerWidth - bubble.size) + bubble.size / 2,
-    y: Math.random() * (containerHeight - bubble.size) + bubble.size / 2,
-    vx: (Math.random() - 0.5) * 0.8,
-    vy: (Math.random() - 0.5) * 0.8
+  // Assign random positions and sizes to messages
+  bubbles.value = messages.map(msg => ({
+    id: msg.id,
+    username: msg.username,
+    content: msg.content,
+    created_at: msg.created_at,
+    size: 160 + Math.random() * 60, // 160-220px
+    x: Math.random() * (containerWidth - 200) + 100,
+    y: Math.random() * (containerHeight - 200) + 100,
+    vx: (Math.random() - 0.5) * 0.6,
+    vy: (Math.random() - 0.5) * 0.6
   }))
 }
 
@@ -220,7 +184,6 @@ const checkCollision = (b1, b2) => {
   const dx = b1.x - b2.x
   const dy = b1.y - b2.y
   const distance = Math.sqrt(dx * dx + dy * dy)
-  // 使用宽度作为碰撞检测的基准
   const minDistance = (b1.size + b2.size) / 2
   return distance < minDistance
 }
@@ -236,24 +199,19 @@ const handleCollision = (b1, b2) => {
   const nx = dx / distance
   const ny = dy / distance
   
-  // 相对速度
   const dvx = b2.vx - b1.vx
   const dvy = b2.vy - b1.vy
   
-  // 相对速度在法线方向的分量
   const dvn = dvx * nx + dvy * ny
   
-  // 如果正在分离，不处理
   if (dvn > 0) return
   
-  // 弹性碰撞（简化处理）
   const impulse = 2 * dvn
   b1.vx += impulse * nx * 0.5
   b1.vy += impulse * ny * 0.5
   b2.vx -= impulse * nx * 0.5
   b2.vy -= impulse * ny * 0.5
   
-  // 分离气泡
   const overlap = (b1.size + b2.size) / 2 - distance
   if (overlap > 0) {
     const separationX = nx * overlap * 0.5
@@ -272,13 +230,11 @@ const checkInputPanelCollision = (bubble) => {
   const inputRect = inputPanel.value.getBoundingClientRect()
   const containerRect = bubblesContainer.value.getBoundingClientRect()
   
-  // 将输入框位置转换为相对于气泡容器的坐标
   const inputX = inputRect.left - containerRect.left + inputRect.width / 2
   const inputY = inputRect.top - containerRect.top + inputRect.height / 2
   const inputWidth = inputRect.width
   const inputHeight = inputRect.height
   
-  // 检测气泡中心是否在输入框区域内（加上一些边距）
   const margin = bubble.size / 2 + 20
   const bubbleLeft = bubble.x - bubble.size / 2
   const bubbleRight = bubble.x + bubble.size / 2
@@ -307,19 +263,12 @@ const handleInputPanelCollision = (bubble) => {
   
   const margin = bubble.size / 2 + 20
   
-  // 计算气泡中心到输入框边缘的距离
-  const dx = bubble.x - inputX
-  const dy = bubble.y - inputY
-  
-  // 计算输入框的边界（加上边距）
   const inputLeft = inputX - inputWidth / 2 - margin
   const inputRight = inputX + inputWidth / 2 + margin
   const inputTop = inputY - inputHeight / 2 - margin
   const inputBottom = inputY + inputHeight / 2 + margin
   
-  // 如果气泡在输入框区域内，将其推出
   if (bubble.x >= inputLeft && bubble.x <= inputRight && bubble.y >= inputTop && bubble.y <= inputBottom) {
-    // 计算最近的边界
     const distToLeft = bubble.x - inputLeft
     const distToRight = inputRight - bubble.x
     const distToTop = bubble.y - inputTop
@@ -345,7 +294,7 @@ const handleInputPanelCollision = (bubble) => {
 
 // 动画循环
 const animate = () => {
-  if (!bubblesContainer.value) return
+  if (!bubblesContainer.value || bubbles.value.length === 0) return
   
   updateBubblesContainerHeight()
   
@@ -358,13 +307,13 @@ const animate = () => {
     bubble.x += bubble.vx
     bubble.y += bubble.vy
     
-    // 边界碰撞（使用宽度作为基准）
+    // 边界碰撞
     const halfSize = bubble.size / 2
     if (bubble.x - halfSize < 0 || bubble.x + halfSize > containerWidth) {
       bubble.vx = -bubble.vx
       bubble.x = Math.max(halfSize, Math.min(containerWidth - halfSize, bubble.x))
     }
-    // 高度边界
+    
     const halfHeight = bubble.size * 0.4
     if (bubble.y - halfHeight < 0 || bubble.y + halfHeight > containerHeight) {
       bubble.vy = -bubble.vy
@@ -394,54 +343,69 @@ const animate = () => {
 }
 
 // 提交新消息
-const handleSubmit = () => {
-  if (!newMessage.value.trim() || newMessage.value.length > 144) return
+const handleSubmit = async () => {
+  if (!newMessage.value.trim() || newMessage.value.length > 144 || !isAuthenticated.value) return
   
-  const newBubble = {
-    id: Date.now(),
-    user: '我',
-    time: '刚刚',
-    content: newMessage.value.trim(),
-    size: 160 + Math.random() * 60, // 160-220px
-    x: 0,
-    y: 0,
-    vx: (Math.random() - 0.5) * 0.8,
-    vy: (Math.random() - 0.5) * 0.8
+  try {
+    const message = await postMessage(newMessage.value.trim())
+    console.log('✅ Message posted:', message)
+    
+    // Add new message to bubbles
+    if (bubblesContainer.value) {
+      const container = bubblesContainer.value
+      const newBubble = {
+        id: message.id,
+        username: message.username,
+        content: message.content,
+        created_at: message.created_at,
+        size: 160 + Math.random() * 60,
+        x: container.clientWidth / 2,
+        y: bubblesContainerHeight.value * 0.6,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: (Math.random() - 0.5) * 0.8
+      }
+      
+      bubbles.value.push(newBubble)
+      newMessage.value = ''
+    }
+  } catch (err) {
+    console.error('Failed to post message:', err)
+    alert(t('forum.postError'))
   }
-  
-  // 初始化位置（在容器中心附近，但要避开输入框）
-  if (bubblesContainer.value) {
-    const container = bubblesContainer.value
-    newBubble.x = container.clientWidth / 2
-    // 避免在输入框区域生成
-    const safeY = bubblesContainerHeight.value * 0.6 // 在上方60%区域生成
-    newBubble.y = safeY
+}
+
+// Check authentication status
+const checkAuthStatus = () => {
+  isAuthenticated.value = checkAuth()
+}
+
+// 窗口大小改变时重新初始化
+const handleResize = () => {
+  updateBubblesContainerHeight()
+  if (bubbles.value.length > 0) {
+    initBubbles(bubbles.value)
   }
-  
-  bubbles.value.push(newBubble)
-  newMessage.value = ''
 }
 
 onMounted(() => {
-  // 等待DOM渲染完成
-  setTimeout(() => {
-    initBubbles()
-    animate()
-  }, 100)
+  checkAuthStatus()
+  loadMessages()
   
-  // 窗口大小改变时重新初始化
-  const handleResize = () => {
-    updateBubblesContainerHeight()
-    initBubbles()
-  }
+  // Start animation after data is loaded
+  setTimeout(() => {
+    animate()
+  }, 500)
+  
   window.addEventListener('resize', handleResize)
+  window.addEventListener('userStateChanged', checkAuthStatus)
 })
 
 onUnmounted(() => {
   if (animationId) {
     cancelAnimationFrame(animationId)
   }
-  window.removeEventListener('resize', initBubbles)
+  window.removeEventListener('resize', handleResize)
+  window.removeEventListener('userStateChanged', checkAuthStatus)
 })
 </script>
 
@@ -511,6 +475,65 @@ onUnmounted(() => {
   50% {
     transform: translateY(-20px) rotate(10deg);
   }
+}
+
+/* Loading State */
+.loading-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 20;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(220, 38, 38, 0.3);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.error-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 20;
+  background: var(--color-bg);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--color-primary);
+}
+
+.error-message {
+  color: var(--color-error);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.btn-primary {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  transition: background-color var(--transition-base);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
 }
 
 /* 气泡容器 */
@@ -597,6 +620,7 @@ onUnmounted(() => {
   padding: var(--spacing-lg);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.5);
+  position: relative;
 }
 
 .message-input {
@@ -662,6 +686,21 @@ onUnmounted(() => {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.login-prompt {
+  margin-top: var(--spacing-sm);
+  text-align: center;
+  font-size: var(--font-size-sm);
+}
+
+.login-prompt a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.login-prompt a:hover {
+  text-decoration: underline;
 }
 
 /* 响应式设计 */

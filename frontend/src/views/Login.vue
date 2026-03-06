@@ -71,7 +71,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { login, isAuthenticated } from '../utils/auth'
+import { login, isAuthenticated } from '../services/authService'
 
 const router = useRouter()
 
@@ -83,7 +83,7 @@ const form = ref({
 const errorMessage = ref('')
 const isLoading = ref(false)
 
-// 如果已登录，重定向到首页
+// If already logged in, redirect to home
 onMounted(() => {
   if (isAuthenticated()) {
     router.push('/')
@@ -91,9 +91,10 @@ onMounted(() => {
 })
 
 const handleLogin = async () => {
+  // Clear previous errors
   errorMessage.value = ''
   
-  // 验证输入
+  // Validate input
   if (!form.value.username.trim() || !form.value.password.trim()) {
     errorMessage.value = '请输入用户名和密码'
     return
@@ -101,21 +102,26 @@ const handleLogin = async () => {
 
   isLoading.value = true
 
-  // 模拟网络延迟
-  await new Promise(resolve => setTimeout(resolve, 500))
-
-  // 调用登录函数
-  const result = login(form.value.username, form.value.password)
-
-  isLoading.value = false
-
-  if (result.success) {
-    // 登录成功，触发状态更新事件
-    window.dispatchEvent(new Event('userStateChanged'))
-    // 跳转到首页
-    router.push('/')
-  } else {
-    errorMessage.value = result.message || '用户名或密码错误'
+  try {
+    // Call login API
+    const result = await login(form.value.username, form.value.password)
+    
+    if (result.success) {
+      // Login successful - dispatch event and redirect
+      window.dispatchEvent(new Event('userStateChanged'))
+      window.dispatchEvent(new Event('cartUpdated'))
+      
+      // Use router for navigation
+      router.push('/')
+    } else {
+      // Show error message from server
+      errorMessage.value = result.message || '用户名或密码错误'
+    }
+  } catch (error) {
+    console.error('Login error:', error)
+    errorMessage.value = '登录失败，请稍后重试'
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
