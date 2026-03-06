@@ -30,11 +30,46 @@
     "noMessages": "暫無留言",
     "anonymous": "匿名用戶"
   },
+  "profile": {
+    "title": "個人中心",
+    "notLoggedIn": "未登錄",
+    "pleaseLogin": "請登錄後查看個人資料",
+    "userId": "用戶ID",
+    "registeredDate": "註冊日期",
+    "orderCount": "訂單總數",
+    "quickActions": "快捷操作",
+    "myOrders": "我的訂單",
+    "viewOrders": "查看訂單歷史",
+    "myWishlist": "我的收藏",
+    "viewWishlist": "查看收藏的商品",
+    "viewCart": "查看購物車",
+    "logout": "退出登錄",
+    "logoutDesc": "退出當前賬號",
+    "logoutConfirm": "確定要退出登錄嗎？",
+    "forgotPasswordTip": "需要修改密碼？",
+    "customer": "普通用戶",
+    "seller": "商家",
+    "admin": "管理員",
+    "fetchError": "載入個人資料失敗",
+    "profile": {
+    "sellerActions": "商家操作",
+    "sellerDashboard": "商家後台",
+    "manageStore": "管理您的店鋪",
+    "sellerOrders": "訂單管理",
+    "viewSellerOrders": "查看客戶訂單",
+    "myProducts": "商品管理",
+    "manageProducts": "管理您的商品"
+  }
+  },
   "common": {
     "loading": "載入中...",
     "retry": "重試",
     "loadError": "載入數據失敗",
-    "goBack": "返回"
+    "goBack": "返回",
+    "email": "郵箱",
+    "cart": "購物車",
+    "forgotPassword": "重置密碼",
+    "login": "登錄"
   },
   "login": {
     "title": "登錄",

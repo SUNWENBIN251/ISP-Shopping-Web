@@ -253,7 +253,6 @@
             
             <!-- Image Grid -->
             <div class="images-grid">
-              <!-- Display existing/uploaded images -->
               <div 
                 v-for="(image, index) in productForm.images" 
                 :key="index"
@@ -270,7 +269,6 @@
                 </button>
               </div>
               
-              <!-- Add image button (only show if less than 5 images) -->
               <div 
                 v-if="productForm.images.length < 5"
                 class="image-upload-btn"
@@ -288,7 +286,6 @@
               </div>
             </div>
 
-            <!-- Image counter and help text -->
             <p class="image-count">{{ productForm.images.length }}/5 images</p>
             <p class="help-text" :class="{ 'text-danger': productForm.images.length < 3 }">
               {{ productForm.images.length < 3 ? 'Please upload at least 3 images' : 'Minimum 3 images required' }}
@@ -356,39 +353,24 @@ const productImageInput = ref(null)
 
 // Helper: Safely get product images
 const getProductImages = (product) => {
-  if (!product) return [];
-  
-  console.log('getProductImages for product:', product.id);
-  console.log('image_urls:', product.image_urls);
-  
+  if (!product) return []
   if (product.image_urls) {
     try {
-      // If it's already an array, return it
-      if (Array.isArray(product.image_urls)) {
-        console.log('Images is array, length:', product.image_urls.length);
-        return product.image_urls;
-      }
-      
-      // If it's a string, try to parse it
-      if (typeof product.image_urls === 'string') {
-        // Check if it looks like a JSON array
-        if (product.image_urls.startsWith('[')) {
-          const parsed = JSON.parse(product.image_urls);
-          console.log('Parsed JSON string, length:', parsed.length);
-          return parsed;
-        } else {
-          // Single image URL
-          console.log('Single image URL');
-          return [product.image_urls];
-        }
-      }
-    } catch (e) {
-      console.error('Error parsing images:', e);
-      return [];
+      return typeof product.image_urls === 'string' 
+        ? JSON.parse(product.image_urls) 
+        : product.image_urls
+    } catch {
+      return []
     }
   }
-  return [];
-};
+  return []
+}
+
+// Helper: Get album product count
+const getAlbumProductCount = (albumId) => {
+  const album = albums.value.find(a => a.album_id === albumId);
+  return album?.product_count || 0;
+}
 
 // Helper: Format date
 const formatDate = (dateString) => {
@@ -416,33 +398,36 @@ const toggleAlbumProducts = (albumId) => {
 // Load products for a specific album
 const loadAlbumProducts = async (albumId) => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token')
     const response = await fetch(`/api/albums/${albumId}/products`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
-    });
+    })
     if (response.ok) {
-      const products = await response.json();
-      console.log(`Products for album ${albumId}:`, products);
+      const products = await response.json()
+      console.log(`Products for album ${albumId}:`, products)
       
-      // Map the response
+      // Map the response to include album_id
       const mappedProducts = products.map(p => ({
         ...p,
         product_id: p.id,
         album_id: albumId,
         image_urls: p.image_urls
-      }));
+      }))
       
-      albumProducts.value[albumId] = mappedProducts;
+      albumProducts.value[albumId] = mappedProducts
       
-      // Update the album count immediately
-      updateAlbumCount(albumId);
+      // Update the album count
+      const album = albums.value.find(a => a.album_id === albumId)
+      if (album) {
+        album.product_count = mappedProducts.length
+      }
     }
   } catch (error) {
-    console.error('Failed to load album products:', error);
+    console.error('Failed to load album products:', error)
   }
-};
+}
 
 // Check if user is seller
 onMounted(() => {
@@ -463,41 +448,33 @@ onMounted(() => {
 })
 
 // Load seller data
-// Load seller data
 const loadSellerData = async () => {
-  isLoading.value = true;
+  isLoading.value = true
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token')
     const headers = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
-    };
+    }
     
-    // Load albums - this should include product_count
-    const albumsRes = await fetch('/api/seller/albums', { headers });
+    // Load albums
+    const albumsRes = await fetch('/api/seller/albums', { headers })
     if (albumsRes.ok) {
-      albums.value = await albumsRes.json();
-      console.log('Albums loaded with product counts:', albums.value); // Debug log
+      albums.value = await albumsRes.json()
+      console.log('Albums loaded with product counts:', albums.value)
     }
     
     // Load orders
-    const ordersRes = await fetch('/api/seller/orders', { headers });
+    const ordersRes = await fetch('/api/seller/orders', { headers })
     if (ordersRes.ok) {
-      orders.value = await ordersRes.json();
+      orders.value = await ordersRes.json()
     }
   } catch (error) {
-    console.error('Failed to load seller data:', error);
+    console.error('Failed to load seller data:', error)
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
-
-const updateAlbumCount = (albumId) => {
-  const album = albums.value.find(a => a.album_id === albumId);
-  if (album) {
-    album.product_count = albumProducts.value[albumId]?.length || 0;
-  }
-};
+}
 
 // Album image upload
 const handleAlbumImageUpload = (e) => {
@@ -524,28 +501,25 @@ const triggerProductImageUpload = () => {
 }
 
 const handleProductImageUpload = (e) => {
-  const files = Array.from(e.target.files);
-  const remainingSlots = 5 - productForm.value.images.length;
+  const files = Array.from(e.target.files)
+  const remainingSlots = 5 - productForm.value.images.length
   
   files.slice(0, remainingSlots).forEach(file => {
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = (e) => {
-      productForm.value.images.push(e.target.result);
-    };
-    reader.readAsDataURL(file);
-  });
+      productForm.value.images.push(e.target.result)
+    }
+    reader.readAsDataURL(file)
+  })
   
-  // Clear the input so the same file can be selected again
-  if (productImageInput.value) {
-    productImageInput.value.value = '';
-  }
-};
+  productImageInput.value.value = ''
+}
 
 const removeProductImage = (index) => {
   if (confirm('Are you sure you want to remove this image?')) {
-    productForm.value.images.splice(index, 1);
+    productForm.value.images.splice(index, 1)
   }
-};
+}
 
 // Album actions
 const saveAlbum = async () => {
@@ -569,7 +543,7 @@ const saveAlbum = async () => {
       loadSellerData()
       activeTab.value = 'albums'
     } else {
-      const error = await response.json()
+      const error = await response.json().catch(() => ({ error: 'Failed to save album' }))
       alert('Error: ' + (error.error || 'Failed to save album'))
     }
   } catch (error) {
@@ -600,7 +574,7 @@ const cancelAlbumForm = () => {
 
 // Product actions
 const addProduct = (album) => {
-  selectedAlbum.value = album;
+  selectedAlbum.value = album
   productForm.value = {
     product_id: null,
     album_id: album.album_id,
@@ -608,44 +582,41 @@ const addProduct = (album) => {
     price: '',
     description: '',
     images: []
-  };
-  editingProduct.value = false;
-  showProductModal.value = true;
-};
+  }
+  editingProduct.value = false
+  showProductModal.value = true
+}
 
 const editProduct = (product) => {
-  console.log('Editing product:', product);
+  console.log('Editing product:', product)
   
   // Find which album this product belongs to
-  let albumId = product.album_id;
+  let albumId = product.album_id
   
   if (!albumId) {
     for (const aid in albumProducts.value) {
-      const products = albumProducts.value[aid];
+      const products = albumProducts.value[aid]
       if (products.some(p => p.id === product.id || p.product_id === product.id)) {
-        albumId = parseInt(aid);
-        break;
+        albumId = parseInt(aid)
+        break
       }
     }
   }
   
-  const album = albums.value.find(a => a.album_id === albumId);
-  selectedAlbum.value = album || { album_id: albumId, title: 'Unknown Album' };
+  const album = albums.value.find(a => a.album_id === albumId)
+  selectedAlbum.value = album || { album_id: albumId, title: 'Unknown Album' }
   
-  // Parse images - handle undefined case
-  let images = [];
+  // Parse images
+  let images = []
   if (product.image_urls) {
     try {
       images = typeof product.image_urls === 'string' 
         ? JSON.parse(product.image_urls) 
-        : product.image_urls;
+        : product.image_urls
     } catch (e) {
-      console.error('Error parsing images:', e);
-      images = [];
+      console.error('Error parsing images:', e)
+      images = []
     }
-  } else {
-    console.log('No image_urls found for product');
-    images = []; // Empty array, user can add new images
   }
   
   productForm.value = {
@@ -655,26 +626,26 @@ const editProduct = (product) => {
     price: product.price || '',
     description: product.description || '',
     images: images
-  };
+  }
   
-  console.log('Product form populated:', productForm.value);
+  console.log('Product form populated:', productForm.value)
   
-  editingProduct.value = true;
-  showProductModal.value = true;
-};
+  editingProduct.value = true
+  showProductModal.value = true
+}
 
 const saveProduct = async () => {
   try {
     if (productForm.value.images.length < 3) {
-      alert('Please upload at least 3 images');
-      return;
+      alert('Please upload at least 3 images')
+      return
     }
     
-    const token = localStorage.getItem('token');
-    const method = editingProduct.value ? 'PUT' : 'POST';
+    const token = localStorage.getItem('token')
+    const method = editingProduct.value ? 'PUT' : 'POST'
     const url = editingProduct.value 
       ? `/api/products/${productForm.value.product_id}` 
-      : '/api/products';
+      : '/api/products'
     
     const productData = {
       album_id: productForm.value.album_id,
@@ -682,7 +653,7 @@ const saveProduct = async () => {
       price: parseFloat(productForm.value.price),
       description: productForm.value.description,
       images: productForm.value.images
-    };
+    }
     
     const response = await fetch(url, {
       method,
@@ -691,65 +662,63 @@ const saveProduct = async () => {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(productData)
-    });
+    })
     
     if (response.ok) {
-      alert(editingProduct.value ? 'Product updated!' : 'Product added!');
-      closeProductModal();
+      alert(editingProduct.value ? 'Product updated!' : 'Product added!')
+      closeProductModal()
       
       // Reload products for this album
       if (selectedAlbum.value) {
-        await loadAlbumProducts(selectedAlbum.value.album_id);
-        // The count will be updated inside loadAlbumProducts
+        await loadAlbumProducts(selectedAlbum.value.album_id)
       }
     } else {
-      const error = await response.json().catch(() => ({ error: 'Failed to save product' }));
-      alert('Error: ' + (error.error || 'Failed to save product'));
+      const error = await response.json().catch(() => ({ error: 'Failed to save product' }))
+      alert('Error: ' + (error.error || 'Failed to save product'))
     }
   } catch (error) {
-    console.error('Failed to save product:', error);
-    alert('Failed to save product: ' + error.message);
+    console.error('Failed to save product:', error)
+    alert('Failed to save product: ' + error.message)
   }
-};
+}
 
 const deleteProduct = async (product) => {
-  const productId = product.id || product.product_id;
+  const productId = product.id || product.product_id
   
   if (!productId) {
-    alert('Error: Product ID not found');
-    return;
+    alert('Error: Product ID not found')
+    return
   }
   
-  if (!confirm(`Are you sure you want to delete this product? This action cannot be undone.`)) return;
+  if (!confirm(`Are you sure you want to delete this product? This action cannot be undone.`)) return
   
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token')
     const response = await fetch(`/api/products/${productId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
-    });
+    })
     
     if (response.ok) {
-      alert('Product deleted successfully!');
+      alert('Product deleted successfully!')
       
       // Find and reload the album
-      const albumId = product.album_id;
+      const albumId = product.album_id
       if (albumId) {
-        await loadAlbumProducts(albumId);
-        // The count will be updated inside loadAlbumProducts
+        await loadAlbumProducts(albumId)
       }
     } else {
-      const error = await response.json().catch(() => ({ error: 'Failed to delete product' }));
-      alert('Error: ' + (error.error || 'Failed to delete product'));
+      const error = await response.json().catch(() => ({ error: 'Failed to delete product' }))
+      alert('Error: ' + (error.error || 'Failed to delete product'))
     }
   } catch (error) {
-    console.error('Failed to delete product:', error);
-    alert('Failed to delete product: ' + error.message);
+    console.error('Failed to delete product:', error)
+    alert('Failed to delete product: ' + error.message)
   }
-};
+}
 
 const closeProductModal = () => {
   showProductModal.value = false
@@ -763,6 +732,9 @@ const closeProductModal = () => {
     images: []
   }
   editingProduct.value = false
+  if (productImageInput.value) {
+    productImageInput.value.value = ''
+  }
 }
 
 const viewOrder = (order) => {
@@ -955,7 +927,6 @@ const viewOrder = (order) => {
   background: var(--color-bg-light);
   border-radius: var(--border-radius-md);
   border: 1px solid var(--color-border);
-  transition: opacity var(--transition-base);
 }
 
 .product-images {
@@ -1025,11 +996,6 @@ const viewOrder = (order) => {
   background: #c82333;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-}
-
-.btn-danger.small {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: var(--font-size-sm);
 }
 
 .no-products {
@@ -1127,6 +1093,7 @@ const viewOrder = (order) => {
   height: 100%;
   object-fit: cover;
   border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border);
 }
 
 .remove-image {
@@ -1308,76 +1275,6 @@ const viewOrder = (order) => {
   color: var(--color-primary);
 }
 
-.images-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
-}
-
-.image-item {
-  position: relative;
-  aspect-ratio: 1;
-}
-
-.image-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: var(--border-radius-sm);
-  border: 1px solid var(--color-border);
-}
-
-.remove-image {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-error);
-  color: white;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: transform var(--transition-base);
-}
-
-.remove-image:hover {
-  transform: scale(1.1);
-}
-
-.image-upload-btn {
-  aspect-ratio: 1;
-  border: 2px dashed var(--color-border);
-  border-radius: var(--border-radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: var(--color-bg-light);
-  color: var(--color-text-secondary);
-  transition: all var(--transition-base);
-  font-size: var(--font-size-sm);
-  text-align: center;
-  padding: var(--spacing-xs);
-}
-
-.image-upload-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.image-count {
-  font-size: var(--font-size-sm);
-  color: var(--color-primary);
-  font-weight: bold;
-  margin-top: var(--spacing-xs);
-}
-
 @media (max-width: 768px) {
   .dashboard-tabs {
     flex-wrap: wrap;
@@ -1412,5 +1309,4 @@ const viewOrder = (order) => {
     grid-template-columns: 1fr;
   }
 }
-
 </style>

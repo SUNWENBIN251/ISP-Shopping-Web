@@ -87,6 +87,8 @@
           <router-link to="/" class="nav-item">{{ $t('header.nav.home') }}</router-link>
           <router-link to="/category" class="nav-item">{{ $t('header.nav.category') }}</router-link>
           <router-link to="/forum" class="nav-item">{{ $t('header.nav.forum') }}</router-link>
+          <!-- Add this line for seller dashboard -->
+          <router-link v-if="isSeller" to="/seller" class="nav-item">Seller Dashboard</router-link>
           <router-link to="/help" class="nav-item">{{ $t('header.nav.help') }}</router-link>
           <router-link to="/about" class="nav-item">{{ $t('header.nav.about') }}</router-link>
         </div>
@@ -112,9 +114,11 @@ const searchKeyword = ref('')
 const isLoggedIn = ref(false)
 const username = ref('')
 const userRole = ref('') 
-const isSeller = ref(false) 
-const cartCount = ref(0)
 
+const cartCount = ref(0)
+const isSeller = computed(() => {
+  return userRole.value === 'seller' || userRole.value === 'admin'
+})
 // 菜单状态
 const showUserMenu = ref(false)
 const showLanguageMenu = ref(false)
@@ -177,11 +181,14 @@ const changeLanguage = (lang) => {
 }
 
 // 登出
+// 退出登录
 const handleLogout = () => {
-  logout()
-  updateUserState()
-  showUserMenu.value = false
-  router.push('/')
+  if (confirm(t('profile.logoutConfirm'))) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('currentUser')
+    window.dispatchEvent(new Event('userStateChanged'))
+    router.push('/login')
+  }
 }
 
 // 点击外部关闭菜单

@@ -105,6 +105,53 @@ app.post('/api/users/login', (req, res) => {
     );
 });
 
+// Get user profile
+app.get('/api/user/profile', authenticateToken, (req, res) => {
+  const userId = req.user.userId;
+  
+  db.get(
+    `SELECT 
+      user_id,
+      username,
+      email,
+      role,
+      avatar_url,
+      created_at
+    FROM Users
+    WHERE user_id = ?`,
+    [userId],
+    (err, user) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Get order count for this user
+      db.get(
+        'SELECT COUNT(*) as orderCount FROM Orders WHERE user_id = ?',
+        [userId],
+        (err, orderResult) => {
+          if (err) {
+            console.error('Error fetching order count:', err);
+            return res.json({
+              ...user,
+              orderCount: 0
+            });
+          }
+          
+          res.json({
+            ...user,
+            orderCount: orderResult?.orderCount || 0
+          });
+        }
+      );
+    }
+  );
+});
+
 // ==================== SELLER API ====================
 
 // Get seller's albums
