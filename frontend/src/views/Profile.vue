@@ -77,7 +77,7 @@
               <router-link to="/cart" class="action-card">
                 <div class="action-icon">🛒</div>
                 <div class="action-text">
-                  <div class="action-title">{{ $t('common.cart') }}</div>
+                  <div class="action-title">{{ $t('profile.myCart') }}</div>
                   <div class="action-desc">{{ $t('profile.viewCart') }}</div>
                 </div>
               </router-link>
