@@ -113,6 +113,22 @@
       "registrationFailed": "Registration failed. Please try again."
     }
   },
+   "forgotPassword": {
+    "title": "Forgot Password",
+    "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+    "email": "Email Address",
+    "emailPlaceholder": "Enter your registered email",
+    "sendButton": "Send Reset Link",
+    "sending": "Sending...",
+    "backToLogin": "Back to Login",
+    "success": "Password reset link has been sent to your email.",
+    "error": {
+      "emailRequired": "Please enter your email address",
+      "emailInvalid": "Please enter a valid email address",
+      "general": "Failed to send reset link. Please try again.",
+      "network": "Network error. Please try again later."
+    }
+  },
   "cart": {
     "title": "Shopping Cart",
     "empty": "Your cart is empty",

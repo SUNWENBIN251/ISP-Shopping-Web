@@ -105,6 +105,45 @@ app.post('/api/users/login', (req, res) => {
     );
 });
 
+// Forgot password - send reset email
+app.post('/api/auth/forgot-password', (req, res) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  
+  // Check if user exists
+  db.get('SELECT * FROM Users WHERE email = ?', [email], (err, user) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (!user) {
+      // For security, still return success even if email doesn't exist
+      // This prevents email enumeration
+      return res.json({ 
+        success: true, 
+        message: 'If your email exists in our system, you will receive a password reset link.' 
+      });
+    }
+    
+    // In a real application, you would:
+    // 1. Generate a reset token
+    // 2. Save it to database with expiration
+    // 3. Send email with reset link
+    
+    // For now, simulate success
+    console.log(`Password reset requested for: ${email}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Password reset link has been sent to your email.' 
+    });
+  });
+});
+
 // Get user profile
 app.get('/api/user/profile', authenticateToken, (req, res) => {
   const userId = req.user.userId;
