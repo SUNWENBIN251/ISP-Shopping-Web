@@ -115,6 +115,33 @@ const loadOrders = async () => {
   }
 }
 
+// Pay order - always succeeds
+const payOrder = async (orderId) => {
+  if (!confirm('Proceed to payment?')) return
+  
+  try {
+    const token = localStorage.getItem('token')
+    const response = await fetch(`/api/orders/${orderId}/pay`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    const data = await response.json()
+    
+    if (response.ok) {
+      alert('✅ Payment successful! Your order has been confirmed.')
+      await loadOrders() // Reload orders to update status
+    } else {
+      alert('❌ ' + (data.error || 'Payment failed'))
+    }
+  } catch (err) {
+    console.error('Payment error:', err)
+    alert('❌ Payment failed. Please try again.')
+  }
+}
+
 // Format date
 const formatDate = (dateString) => {
   const date = new Date(dateString)
@@ -142,11 +169,6 @@ const getStatusText = (status) => {
 // View order details
 const viewOrderDetails = (orderId) => {
   router.push(`/order/${orderId}`)
-}
-
-// Pay order (mock function)
-const payOrder = (orderId) => {
-  alert(t('orders.payFeature'))
 }
 
 // Check authentication
@@ -440,6 +462,14 @@ onMounted(() => {
 
 .btn-secondary:hover {
   background: var(--color-border);
+}
+
+.pay-btn {
+  background: #27ae60;
+}
+
+.pay-btn:hover {
+  background: #2ecc71;
 }
 
 /* Responsive */

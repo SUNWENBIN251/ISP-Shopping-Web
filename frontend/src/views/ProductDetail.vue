@@ -54,6 +54,11 @@
             <span class="price-value">¥{{ productPrice.toFixed(2) }}</span>
           </div>
 
+          <div v-if="!productIsActive" class="unavailable-message">
+            <span class="unavailable-badge">Sold Out</span>
+            <p>This item is no longer available for purchase.</p>
+          </div>
+
           <!-- 操作按钮 -->
           <div class="product-actions">
             <button
@@ -99,6 +104,7 @@ const productArtist = ref('')
 const productCondition = ref('')
 const productPrice = ref(0)
 const productDescription = ref('')
+const productIsActive = ref(true)
 
 // Image gallery
 const currentIndex = ref(0)
@@ -119,11 +125,29 @@ const prevImage = () => {
 }
 
 // Add to cart
+// 添加到购物车
 const addToCart = async () => {
+  // Use selectedProduct instead of selectedVariant
+  if (!productId.value) return
+  
   try {
-    await addItemToCart(productId.value, 1)
-    alert(t('productDetail.addedToCart'))
-    window.dispatchEvent(new Event('cartUpdated'))
+    const result = await addItemToCart(productId.value)
+    
+    if (result.success) {
+      alert(t('productDetail.addedToCart'))
+      window.dispatchEvent(new Event('cartUpdated'))
+    } else {
+      // Show specific error messages based on the error
+      if (result.error === 'Product is already in your cart') {
+        alert('This product is already in your cart')
+      } else if (result.error === 'Product is in your pending order') {
+        alert('This product is already in one of your pending orders')
+      } else if (result.error === 'Product is no longer available') {
+        alert('This product is no longer available')
+      } else {
+        alert(result.error || t('productDetail.addToCartError'))
+      }
+    }
   } catch (error) {
     console.error('Failed to add to cart:', error)
     alert(t('productDetail.addToCartError'))
@@ -145,7 +169,8 @@ const loadProduct = async () => {
     productCondition.value = product.condition
     productPrice.value = product.price
     productDescription.value = product.description || `${product.condition} condition copy`
-    
+    productIsActive.value = product.is_active !== 0
+
     // Handle product images - use the same image_urls from database
     if (product.image_urls) {
       try {
@@ -426,6 +451,27 @@ onMounted(() => {
 
 .description-content p {
   margin: 0;
+}
+
+.unavailable-message {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: #f8d7da;
+  border-radius: var(--border-radius-md);
+  text-align: center;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.unavailable-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-error);
+  color: white;
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  margin-bottom: var(--spacing-sm);
 }
 
 /* Responsive */

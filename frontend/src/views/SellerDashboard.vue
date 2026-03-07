@@ -96,6 +96,13 @@
                   
                   <div class="product-actions">
                     <button class="btn-secondary small" @click="editProduct(product)">Edit</button>
+                    <button
+                      class="btn-small"
+                      :class="product.is_active ? 'btn-warning' : 'btn-success'"
+                      @click="toggleProductStatus(product)"
+                    >
+                      {{ product.is_active !== 1 ? 'Activate' : 'Deactivate' }}
+                    </button>
                     <button class="btn-danger small" @click="deleteProduct(product)">Delete</button>
                   </div>
                 </div>
@@ -720,6 +727,44 @@ const deleteProduct = async (product) => {
   }
 }
 
+// Toggle product active status
+const toggleProductStatus = async (product) => {
+  // Default to true if is_active is undefined (for existing products)
+  const currentStatus = product.is_active !== undefined ? product.is_active : true;
+  const action = currentStatus ? 'deactivate' : 'activate';
+  
+  if (!confirm(`Are you sure you want to ${action} this product?`)) return;
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/products/${product.id}/toggle`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      alert(`Product ${action}d successfully!`);
+      
+      // Toggle the status locally
+      product.is_active = !currentStatus;
+      
+      // Reload from server
+      if (product.album_id) {
+        await loadAlbumProducts(product.album_id);
+      }
+    } else {
+      const error = await response.json();
+      alert('Error: ' + (error.error || 'Failed to toggle status'));
+    }
+  } catch (error) {
+    console.error('Failed to toggle product status:', error);
+    alert('Failed to toggle product status');
+  }
+};
+
 const closeProductModal = () => {
   showProductModal.value = false
   selectedAlbum.value = null
@@ -1273,6 +1318,35 @@ const viewOrder = (order) => {
 .modal-content h3 {
   margin-bottom: var(--spacing-lg);
   color: var(--color-primary);
+}
+
+.btn-success {
+  background: #27ae60;
+  color: white;
+  border: none;
+}
+
+.btn-success:hover {
+  background: #2ecc71;
+}
+
+.btn-warning {
+  background: #f39c12;
+  color: white;
+  border: none;
+}
+
+.btn-warning:hover {
+  background: #e67e22;
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
 }
 
 @media (max-width: 768px) {

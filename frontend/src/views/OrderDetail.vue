@@ -88,10 +88,10 @@
         <div class="action-buttons">
           <button 
             v-if="order.status === 'pending'" 
-            class="btn-primary" 
+            class="btn-primary pay-btn" 
             @click="payOrder"
           >
-            {{ $t('orderDetail.payNow') }}
+            💰 {{ $t('orderDetail.payNow') }}
           </button>
           <button 
             v-if="order.status === 'pending'" 
@@ -171,23 +171,45 @@ const formatDate = (dateString) => {
 // Get status text
 const getStatusText = (status) => {
   const statusMap = {
-    'pending': t('orders.status.pending'),
-    'paid': t('orders.status.paid'),
-    'shipped': t('orders.status.shipped'),
-    'completed': t('orders.status.completed'),
-    'cancelled': t('orders.status.cancelled')
+    'pending': 'Pending Payment',
+    'paid': 'Paid',
+    'shipped': 'Shipped',
+    'completed': 'Completed',
+    'cancelled': 'Cancelled'
   }
   return statusMap[status] || status
 }
 
-// Pay order
-const payOrder = () => {
-  alert(t('orderDetail.payFeature'))
+// Pay order - always succeeds
+const payOrder = async () => {
+  if (!confirm('Proceed to payment?')) return
+  
+  try {
+    const token = localStorage.getItem('token')
+    const response = await fetch(`/api/orders/${order.value.id}/pay`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    const data = await response.json()
+    
+    if (response.ok) {
+      alert('✅ Payment successful! Your order has been confirmed.')
+      await loadOrder() // Reload order
+    } else {
+      alert('❌ ' + (data.error || 'Payment failed'))
+    }
+  } catch (err) {
+    console.error('Payment error:', err)
+    alert('❌ Payment failed. Please try again.')
+  }
 }
 
 // Cancel order
 const cancelOrder = async () => {
-  if (!confirm(t('orderDetail.confirmCancel'))) return
+  if (!confirm('Are you sure you want to cancel this order?')) return
   
   try {
     const token = localStorage.getItem('token')
@@ -199,19 +221,21 @@ const cancelOrder = async () => {
     })
     
     if (response.ok) {
+      alert('Order cancelled successfully')
       await loadOrder()
     } else {
-      alert(t('orderDetail.cancelFailed'))
+      const data = await response.json()
+      alert(data.error || 'Failed to cancel order')
     }
   } catch (err) {
     console.error('Failed to cancel order:', err)
-    alert(t('orderDetail.cancelFailed'))
+    alert('Failed to cancel order')
   }
 }
 
 // Confirm receipt
 const confirmReceipt = async () => {
-  if (!confirm(t('orderDetail.confirmReceiptMsg'))) return
+  if (!confirm('Have you received your order?')) return
   
   try {
     const token = localStorage.getItem('token')
@@ -223,13 +247,15 @@ const confirmReceipt = async () => {
     })
     
     if (response.ok) {
+      alert('Thank you for confirming! Order completed.')
       await loadOrder()
     } else {
-      alert(t('orderDetail.confirmFailed'))
+      const data = await response.json()
+      alert(data.error || 'Failed to confirm receipt')
     }
   } catch (err) {
     console.error('Failed to confirm receipt:', err)
-    alert(t('orderDetail.confirmFailed'))
+    alert('Failed to confirm receipt')
   }
 }
 
@@ -299,6 +325,21 @@ onMounted(() => {
   font-size: var(--font-size-lg);
   margin-bottom: var(--spacing-lg);
   text-align: center;
+}
+
+.btn-primary {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  transition: background-color var(--transition-base);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
 }
 
 /* Order Content */
@@ -552,6 +593,14 @@ onMounted(() => {
   background: var(--color-primary-dark);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+.pay-btn {
+  background: #27ae60;
+}
+
+.pay-btn:hover {
+  background: #2ecc71;
 }
 
 .btn-secondary {
