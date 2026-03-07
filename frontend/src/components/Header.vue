@@ -70,9 +70,9 @@
           <span class="action-text">{{ username || $t('header.user') }}</span>
           <div class="user-dropdown" v-if="showUserMenu">
             <div class="dropdown-item" @click="$router.push('/profile')">{{ $t('header.profile') }}</div>
-            <div class="dropdown-item" @click="$router.push('/orders')">{{ $t('header.orders') }}</div>
-            <div class="dropdown-item" @click="$router.push('/wishlist')">{{ $t('header.wishlist') }}</div>
-            <div class="dropdown-item" v-if="userRole === 'seller' || userRole === 'admin'" @click="$router.push('/seller')">Seller Dashboard</div>
+            <div class="dropdown-item" v-if="!isSeller" @click="$router.push('/orders')">{{ $t('header.orders') }}</div>
+            <div class="dropdown-item" v-if="!isSeller" @click="$router.push('/wishlist')">{{ $t('header.wishlist') }}</div>
+            <div class="dropdown-item" v-if="isSeller" @click="$router.push('/seller')">Seller Dashboard</div>
             <div class="dropdown-divider"></div>
             <div class="dropdown-item" @click="handleLogout">{{ $t('header.logout') }}</div>
           </div>

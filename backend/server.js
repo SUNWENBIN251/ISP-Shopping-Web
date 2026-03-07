@@ -283,7 +283,6 @@ app.post('/api/albums', authenticateToken, requireSeller, (req, res) => {
 });
 
 // Update album
-// Update album
 app.put('/api/albums/:id', authenticateToken, requireSeller, (req, res) => {
   const albumId = req.params.id;
   const { title, artist, cover_image, genre, tracklist, release_year } = req.body;
@@ -300,6 +299,46 @@ app.put('/api/albums/:id', authenticateToken, requireSeller, (req, res) => {
       res.json({ success: true, message: 'Album updated successfully' });
     }
   );
+});
+
+// Search albums
+app.get('/api/albums/search', (req, res) => {
+  const { search, genre, limit = 20, offset = 0 } = req.query;
+  
+  let sql = `
+    SELECT 
+      album_id,
+      title,
+      artist,
+      cover_image_url,
+      genre,
+      release_year,
+      (SELECT COUNT(*) FROM Products WHERE album_id = Albums.album_id AND is_active = 1) as product_count
+    FROM Albums
+    WHERE 1=1
+  `;
+  const params = [];
+  
+  if (search) {
+    sql += ' AND (title LIKE ? OR artist LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+  
+  if (genre) {
+    sql += ' AND genre = ?';
+    params.push(genre);
+  }
+  
+  sql += ' ORDER BY title LIMIT ? OFFSET ?';
+  params.push(parseInt(limit), parseInt(offset));
+  
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      console.error('Search error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(rows);
+  });
 });
 
 // Create new product

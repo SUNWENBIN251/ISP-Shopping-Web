@@ -165,6 +165,7 @@
     "noItemsInCondition": "No copies in this condition"
   },
   "category": {
+    "albums": "albums",
     "title": "Categories",
     "subtitle": "Browse all music categories",
     "items": "items",
@@ -192,6 +193,20 @@
     "countryDesc": "Traditional Country, Modern Country, Country Pop",
     "world": "World Music",
     "worldDesc": "Traditional and Modern Music from Around the World"
+  },
+  "search": {
+    "title": "Search Albums",
+    "placeholder": "Search by album title or artist...",
+    "button": "Search",
+    "searching": "Searching...",
+    "allCategories": "All Genre",
+    "tip": "Enter keywords to search for albums",
+    "noResults": "No albums found",
+    "tryDifferentKeyword": "Try different keywords or browse categories",
+    "loadMore": "Load More",
+    "loading": "Loading...",
+    "foundAlbums": "Found {count} albums",
+    "products": "items available"
   },
   "orders": {
     "title": "My Orders",

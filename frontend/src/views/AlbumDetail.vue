@@ -67,7 +67,11 @@
                 @click="$router.push(`/product/${product.id}`)"
               >
                 <div class="product-image">
-                  <img :src="albumImage" :alt="albumTitle" />
+                  <img 
+                    :src="getProductImage(product)" 
+                    :alt="albumTitle"
+                    @error="handleImageError"
+                  />
                 </div>
                 <div class="product-info">
                   <p class="product-condition">{{ product.condition }}</p>
@@ -151,6 +155,28 @@ onMounted(() => {
   }
   loadAlbum()
 })
+
+// Get the first product image or fallback to album cover
+const getProductImage = (product) => {
+  if (product.image_urls) {
+    try {
+      const images = typeof product.image_urls === 'string' 
+        ? JSON.parse(product.image_urls) 
+        : product.image_urls;
+      if (images && images.length > 0) {
+        return images[0]; // Return the first uploaded photo
+      }
+    } catch (e) {
+      console.error('Error parsing product images:', e);
+    }
+  }
+  return albumImage.value; // Fallback to album cover
+};
+
+// Handle image load error
+const handleImageError = (e) => {
+  e.target.src = albumImage.value; // Fallback to album cover on error
+};
 </script>
 
 <style scoped>

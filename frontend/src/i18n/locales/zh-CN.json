@@ -165,6 +165,7 @@
     "noItemsInCondition": "该成色下暂无唱片"
   },
   "category": {
+    "albums": "张专辑",
     "title": "商品分类",
     "subtitle": "浏览所有音乐分类，找到你喜欢的唱片",
     "items": "件商品",
@@ -192,6 +193,20 @@
     "countryDesc": "传统乡村、现代乡村、乡村流行等",
     "world": "世界音乐",
     "worldDesc": "世界各地的传统与现代音乐"
+  },
+  "search": {
+    "title": "搜索专辑",
+    "placeholder": "按专辑名称或艺术家搜索...",
+    "button": "搜索",
+    "searching": "搜索中...",
+    "allCategories": "全部分类",
+    "tip": "输入关键词搜索专辑",
+    "noResults": "未找到专辑",
+    "tryDifferentKeyword": "尝试其他关键词或浏览分类",
+    "loadMore": "加载更多",
+    "loading": "加载中...",
+    "foundAlbums": "找到 {count} 张专辑",
+    "products": "件商品"
   },
   "orders": {
     "title": "我的订单",

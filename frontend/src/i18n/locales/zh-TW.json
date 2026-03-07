@@ -167,6 +167,7 @@
     "noItemsInCondition": "該成色下暫無唱片"
   },
   "category": {
+    "albums": "張專輯",
     "title": "商品分類",
     "subtitle": "瀏覽所有音樂分類，找到你喜歡的唱片",
     "items": "件商品",
@@ -194,6 +195,20 @@
     "countryDesc": "傳統鄉村、現代鄉村、鄉村流行等",
     "world": "世界音樂",
     "worldDesc": "世界各地的傳統與現代音樂"
+  },
+  "search": {
+    "title": "搜索專輯",
+    "placeholder": "按專輯名稱或藝術家搜索...",
+    "button": "搜索",
+    "searching": "搜索中...",
+    "allCategories": "全部分類",
+    "tip": "輸入關鍵詞搜索專輯",
+    "noResults": "未找到專輯",
+    "tryDifferentKeyword": "嘗試其他關鍵詞或瀏覽分類",
+    "loadMore": "載入更多",
+    "loading": "載入中...",
+    "foundAlbums": "找到 {count} 張專輯",
+    "products": "件商品"
   },
   "orders": {
     "title": "我的訂單",

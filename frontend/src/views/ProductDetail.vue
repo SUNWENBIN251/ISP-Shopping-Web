@@ -62,6 +62,7 @@
           <!-- 操作按钮 -->
           <div class="product-actions">
             <button
+              v-if="!isSeller"
               class="btn-add-cart"
               @click="addToCart"
             >
@@ -112,6 +113,8 @@ const productImages = ref([])
 const currentImage = computed(() => {
   return productImages.value[currentIndex.value] || ''
 })
+
+const isSeller = ref(false)
 
 // Image navigation functions
 const nextImage = () => {
@@ -203,6 +206,11 @@ onMounted(() => {
     router.push('/')
     return
   }
+  
+  // Check if current user is a seller
+  const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
+  isSeller.value = user.role === 'seller' || user.role === 'admin'
+  
   loadProduct()
 })
 </script>
