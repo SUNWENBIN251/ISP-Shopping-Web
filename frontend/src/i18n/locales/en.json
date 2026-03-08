@@ -217,6 +217,8 @@
     "total": "Total",
     "viewDetails": "View Details",
     "payNow": "Pay Now",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
     "status": {
       "pending": "Pending Payment",
       "paid": "Paid",

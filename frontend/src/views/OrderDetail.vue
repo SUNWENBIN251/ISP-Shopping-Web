@@ -73,7 +73,7 @@
         <div class="summary-card">
           <div class="summary-row">
             <span>{{ $t('orderDetail.subtotal') }}:</span>
-            <span>¥{{ order.subtotal || order.total }}</span>
+            <span>¥{{ order.subtotal || 0 }}</span>
           </div>
           <div class="summary-row">
             <span>{{ $t('orderDetail.shipping') }}:</span>
@@ -81,7 +81,7 @@
           </div>
           <div class="summary-row total">
             <span>{{ $t('orderDetail.total') }}:</span>
-            <span class="total-price">¥{{ order.total }}</span>
+            <span class="total-price">¥{{ (order.subtotal || 0) + (order.shipping_cost || 0) }}</span>
           </div>
         </div>
 

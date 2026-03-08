@@ -299,12 +299,8 @@ const placeOrder = async () => {
       },
       body: JSON.stringify({
         shipping_address: getFormattedAddress(),
-        payment_method: 'mpay', // Fixed to mpay
-        items: cartItems.value.map(item => ({
-          product_id: item.id,
-          quantity: item.quantity,
-          price: item.price
-        }))
+        payment_method: 'mpay',
+        // Don't send items array - server will get from cart
       })
     })
     

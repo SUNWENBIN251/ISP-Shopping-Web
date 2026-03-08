@@ -53,9 +53,19 @@
           </div>
 
           <div class="order-footer">
-            <div class="order-total">
-              <span>{{ $t('orders.total') }}:</span>
-              <span class="total-price">¥{{ order.total }}</span>
+            <div class="order-totals">
+              <div class="totals-row">
+                <span>{{ $t('orders.subtotal') }}:</span>
+                <span>¥{{ calculateSubtotal(order.items) }}</span>
+              </div>
+              <div class="totals-row">
+                <span>{{ $t('orders.shipping') }}:</span>
+                <span>¥{{ calculateShipping(order.items) }}</span>
+              </div>
+              <div class="totals-row total">
+                <span>{{ $t('orders.total') }}:</span>
+                <span class="total-price">¥{{ calculateTotal(order.items) }}</span>
+              </div>
             </div>
             <div class="order-actions">
               <button class="btn-secondary" @click="viewOrderDetails(order.id)">
@@ -63,7 +73,7 @@
               </button>
               <button 
                 v-if="order.status === 'pending'" 
-                class="btn-primary" 
+                class="btn-primary pay-btn" 
                 @click="payOrder(order.id)"
               >
                 {{ $t('orders.payNow') }}
@@ -113,6 +123,25 @@ const loadOrders = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// Calculate subtotal from items
+const calculateSubtotal = (items) => {
+  if (!items) return 0
+  return items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+}
+
+// Calculate shipping (free over 500, otherwise 50)
+const calculateShipping = (items) => {
+  const subtotal = calculateSubtotal(items)
+  return subtotal >= 500 ? 0 : 50
+}
+
+// Calculate total
+const calculateTotal = (items) => {
+  const subtotal = calculateSubtotal(items)
+  const shipping = calculateShipping(items)
+  return subtotal + shipping
 }
 
 // Pay order - always succeeds
@@ -412,6 +441,8 @@ onMounted(() => {
   align-items: center;
   padding: var(--spacing-lg);
   background: var(--color-bg-light);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
 }
 
 .order-total {
@@ -470,6 +501,34 @@ onMounted(() => {
 
 .pay-btn:hover {
   background: #2ecc71;
+}
+
+.order-totals {
+  flex: 1;
+  padding-right: var(--spacing-lg);
+}
+
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.totals-row.total {
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-weight: bold;
+}
+
+.total-price {
+  color: var(--color-primary);
+  font-size: var(--font-size-lg);
 }
 
 /* Responsive */

@@ -219,6 +219,8 @@
     "total": "總計",
     "viewDetails": "查看詳情",
     "payNow": "立即支付",
+    "subtotal": "商品合計",
+    "shipping": "運費",
     "status": {
       "pending": "待付款",
       "paid": "已付款",
