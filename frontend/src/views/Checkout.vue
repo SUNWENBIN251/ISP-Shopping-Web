@@ -121,19 +121,23 @@
               </div>
             </div>
 
-            <!-- Payment Method - mpay Only -->
+            <!-- Payment Method - Multiple Options -->
             <div class="form-section">
               <h2>{{ $t('checkout.paymentMethod') }}</h2>
               
-              <div class="payment-info">
-                <div class="payment-option mpay">
-                  <span class="payment-icon"></span>
-                  <div class="payment-details">
-                    <span class="payment-name">Mpay</span>
-                    <span class="payment-description">{{ $t('checkout.mpayDescription') }}</span>
-                  </div>
-                </div>
-                <p class="payment-note">{{ $t('checkout.mpayNote') }}</p>
+              <div class="payment-options">
+                <label class="payment-option">
+                  <input type="radio" value="支付宝" v-model="paymentMethod" />
+                  <span class="payment-label">支付宝</span>
+                </label>
+                <label class="payment-option">
+                  <input type="radio" value="微信" v-model="paymentMethod" />
+                  <span class="payment-label">微信</span>
+                </label>
+                <label class="payment-option">
+                  <input type="radio" value="Mpay" v-model="paymentMethod" />
+                  <span class="payment-label">Mpay</span>
+                </label>
               </div>
             </div>
           </div>
@@ -149,8 +153,7 @@
                   <span class="item-condition">{{ item.condition }}</span>
                 </div>
                 <div class="item-price">
-                  <span class="item-quantity">{{ item.quantity }}x</span>
-                  <span class="item-total">¥{{ (item.price * item.quantity).toFixed(2) }}</span>
+                  <span class="item-total">¥{{ (item.price || 0).toFixed(2) }}</span>
                 </div>
               </div>
             </div>
@@ -182,7 +185,7 @@
             <button 
               class="place-order-btn"
               @click="placeOrder"
-              :disabled="isSubmitting || !isFormValid"
+              :disabled="isSubmitting || !isFormValid || !paymentMethod"
             >
               <span class="btn-icon">💰</span>
               {{ isSubmitting ? $t('checkout.processing') : $t('checkout.placeOrder') }}
@@ -199,6 +202,7 @@
 </template>
 
 <script setup>
+// Add this near the top with other imports
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -215,8 +219,9 @@ const isSubmitting = ref(false)
 const error = ref(null)
 const errorMessage = ref('')
 const successMessage = ref('')
+const paymentMethod = ref('支付宝') // Set default payment method
 
-// Form data - only shipping info, payment method fixed to mpay
+// Form data - shipping info
 const form = ref({
   fullName: '',
   addressLine1: '',
@@ -229,11 +234,10 @@ const form = ref({
 
 // Computed values
 const subtotal = computed(() => {
-  return cartItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  return cartItems.value.reduce((sum, item) => sum + (item.price || 0), 0)
 })
 
 const shipping = computed(() => {
-  // Free shipping over ¥500, otherwise ¥50
   return subtotal.value >= 500 ? 0 : 50
 })
 
@@ -241,7 +245,7 @@ const total = computed(() => {
   return subtotal.value + shipping.value
 })
 
-// Form validation - only shipping info needed
+// Form validation
 const isFormValid = computed(() => {
   return form.value.fullName && 
          form.value.addressLine1 && 
@@ -251,16 +255,42 @@ const isFormValid = computed(() => {
          form.value.phone
 })
 
-// Load cart items
-const loadCart = async () => {
+// Load checkout items (from either draft or cart)
+const loadCheckoutItems = async () => {
   isLoading.value = true
   error.value = null
   
   try {
-    cartItems.value = await getCart()
-    console.log('Cart loaded:', cartItems.value)
-  } catch (err) {
-    console.error('Failed to load cart:', err)
+    // Check if there's a checkout draft (from Buy Now)
+    const draftStr = sessionStorage.getItem('checkout_draft')
+    if (draftStr) {
+      const draft = JSON.parse(draftStr)
+      if (draft?.items?.length) {
+        console.log('Loading from draft:', draft)
+        cartItems.value = draft.items.map((it) => ({
+          id: it.product_id,
+          name: it.name,
+          artist: it.artist,
+          image: it.image,
+          condition: it.condition,
+          price: Number(it.price_at_purchase || 0)
+        }))
+        // Clear the draft after loading
+        sessionStorage.removeItem('checkout_draft')
+        return
+      }
+    }
+
+    // If no draft, load from cart
+    console.log('No draft found, loading from cart')
+    const cart = await getCart()
+    if (!cart.length) {
+      error.value = '购物车为空，无法结算'
+      return
+    }
+    cartItems.value = cart
+  } catch (e) {
+    console.error('Failed to load checkout items:', e)
     error.value = t('common.loadError')
   } finally {
     isLoading.value = false
@@ -283,7 +313,7 @@ const getFormattedAddress = () => {
 
 // Place order
 const placeOrder = async () => {
-  if (!isFormValid.value) return
+  if (!isFormValid.value || !paymentMethod.value) return
   
   isSubmitting.value = true
   errorMessage.value = ''
@@ -299,20 +329,15 @@ const placeOrder = async () => {
       },
       body: JSON.stringify({
         shipping_address: getFormattedAddress(),
-        payment_method: 'mpay',
-        // Don't send items array - server will get from cart
+        payment_method: paymentMethod.value
       })
     })
     
     const data = await response.json()
     
     if (response.ok) {
-      // Clear cart after successful order
       await clearCart()
-      
       successMessage.value = t('checkout.orderSuccess')
-      
-      // Redirect to order detail after 2 seconds
       setTimeout(() => {
         router.push(`/order/${data.order_id}`)
       }, 2000)
@@ -327,17 +352,18 @@ const placeOrder = async () => {
   }
 }
 
-// Check authentication and load cart
+// Update onMounted to use loadCheckoutItems
 onMounted(() => {
   if (!isAuthenticated()) {
     router.push('/login')
     return
   }
-  loadCart()
+  loadCheckoutItems()
 })
 </script>
 
 <style scoped>
+/* Keep your existing styles exactly as they were */
 .checkout-page {
   min-height: calc(100vh - 200px);
   padding: var(--spacing-xxl) 0;
@@ -510,53 +536,38 @@ onMounted(() => {
   flex: 1;
 }
 
-/* Payment Info - mpay Only */
-.payment-info {
-  background: var(--color-bg-light);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-lg);
-  border: 1px solid var(--color-border);
+/* Payment Options */
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
-.payment-option.mpay {
+.payment-option {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  background: white;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--color-border);
   border-radius: var(--border-radius-md);
-  border: 2px solid #fd5603;
-  margin-bottom: var(--spacing-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
 }
 
-.payment-icon {
-  font-size: 2rem;
+.payment-option:hover {
+  border-color: var(--color-primary);
+  background: var(--color-accent);
 }
 
-.payment-details {
-  flex: 1;
+.payment-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
 }
 
-.payment-name {
-  display: block;
-  font-weight: bold;
-  color: #fd5603;
-  font-size: var(--font-size-lg);
-  margin-bottom: 4px;
-}
-
-.payment-description {
-  display: block;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.payment-note {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin: 0;
-  text-align: center;
-  font-style: italic;
+.payment-label {
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
 }
 
 /* Order Summary */
@@ -684,7 +695,7 @@ onMounted(() => {
 .place-order-btn {
   width: 100%;
   padding: var(--spacing-md);
-  background: #0070ba;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: var(--border-radius-md);
@@ -700,7 +711,7 @@ onMounted(() => {
 }
 
 .place-order-btn:hover:not(:disabled) {
-  background: #003087;
+  background: var(--color-primary-dark);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }

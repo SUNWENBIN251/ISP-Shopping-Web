@@ -148,7 +148,8 @@
     "confirmRemove": "Are you sure you want to remove this item?"
   },
   "productDetail": {
-    "selectCondition": "Select Condition",
+    "condition": "Condition",
+    "price": "Price",
     "availableItems": "Available Items",
     "noItems": "No items in this condition",
     "inStock": "In Stock",
@@ -156,7 +157,8 @@
     "addToCart": "Add to Cart",
     "description": "Description",
     "addedToCart": "Added to cart successfully",
-    "addToCartError": "Failed to add to cart"
+    "addToCartError": "Failed to add to cart",
+    "buyNow": "Buy Now"
   },
   "albumDetail": {
     "tracklist": "Tracklist",

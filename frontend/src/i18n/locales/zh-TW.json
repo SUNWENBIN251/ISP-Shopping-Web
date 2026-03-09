@@ -150,7 +150,8 @@
     "confirmRemove": "確定要刪除這個商品嗎？"
   },
   "productDetail": {
-    "selectCondition": "選擇成色",
+    "condition": "成色",
+    "price": "價格",
     "availableItems": "可選商品",
     "noItems": "該成色下暫無商品",
     "inStock": "有貨",
@@ -158,7 +159,8 @@
     "addToCart": "加入購物車",
     "description": "商品描述",
     "addedToCart": "已加入購物車",
-    "addToCartError": "加入購物車失敗"
+    "addToCartError": "加入購物車失敗",
+    "buyNow": "立即購買"
   },
   "albumDetail": {
     "tracklist": "曲目列表",

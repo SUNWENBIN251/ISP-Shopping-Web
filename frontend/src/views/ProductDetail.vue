@@ -42,41 +42,37 @@
           <!-- 艺术家信息 -->
           <p class="product-artist">{{ productArtist }}</p>
           
-          <!-- 商品成色 -直接显示，无选择 -->
-          <div class="product-condition-display">
-            <span class="condition-label">Condition:</span>
-            <span class="condition-value">{{ productCondition }}</span>
-          </div>
-          
-          <!-- 商品价格 -->
-          <div class="product-price-display">
-            <span class="price-label">Price:</span>
-            <span class="price-value">¥{{ productPrice.toFixed(2) }}</span>
-          </div>
-
-          <div v-if="!productIsActive" class="unavailable-message">
-            <span class="unavailable-badge">Sold Out</span>
-            <p>This item is no longer available for purchase.</p>
+          <!-- Product details - simplified -->
+          <div class="product-details-simple">
+            <div class="detail-row">
+              <span class="detail-label">{{ $t('productDetail.condition') }}:</span>
+              <span class="detail-value">{{ productCondition }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">{{ $t('productDetail.price') }}:</span>
+              <span class="detail-value price">¥{{ productPrice.toFixed(2) }}</span>
+            </div>
+            <div class="detail-row description">
+              <span class="detail-label">{{ $t('productDetail.description') }}:</span>
+              <p class="detail-value">{{ productDescription }}</p>
+            </div>
           </div>
 
           <!-- 操作按钮 -->
-          <div class="product-actions">
+          <div class="product-actions" v-if="!isSeller">
             <button
-              v-if="!isSeller"
               class="btn-add-cart"
               @click="addToCart"
             >
               {{ $t('productDetail.addToCart') }}
             </button>
+            <button
+              class="btn-buy-now"
+              @click="buyNow"
+            >
+              {{ $t('productDetail.buyNow') }}
+            </button>
           </div>
-        </div>
-      </div>
-
-      <!-- 下方：商品描述 -->
-      <div class="product-description-section">
-        <h2 class="description-title">{{ $t('productDetail.description') }}</h2>
-        <div class="description-content">
-          <p>{{ productDescription }}</p>
         </div>
       </div>
     </div>
@@ -89,6 +85,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { addToCart as addItemToCart } from '../services/cartService'
 import { getProduct } from '../services/productService'
+import { isAuthenticated } from '../services/authService'
+import { setCheckoutDraft } from '../services/orderService'
+
+const isSeller = ref(false)
 
 const route = useRoute()
 const router = useRouter()
@@ -98,14 +98,13 @@ const { t } = useI18n()
 const isLoading = ref(true)
 const error = ref(null)
 
-// Product data
+// Product data - simplified
 const productId = computed(() => parseInt(route.params.id))
 const productName = ref('')
 const productArtist = ref('')
 const productCondition = ref('')
 const productPrice = ref(0)
 const productDescription = ref('')
-const productIsActive = ref(true)
 
 // Image gallery
 const currentIndex = ref(0)
@@ -113,8 +112,6 @@ const productImages = ref([])
 const currentImage = computed(() => {
   return productImages.value[currentIndex.value] || ''
 })
-
-const isSeller = ref(false)
 
 // Image navigation functions
 const nextImage = () => {
@@ -128,33 +125,64 @@ const prevImage = () => {
 }
 
 // Add to cart
-// 添加到购物车
 const addToCart = async () => {
-  // Use selectedProduct instead of selectedVariant
-  if (!productId.value) return
-  
   try {
-    const result = await addItemToCart(productId.value)
-    
+    const result = await addItemToCart(productId.value, 1)
     if (result.success) {
       alert(t('productDetail.addedToCart'))
       window.dispatchEvent(new Event('cartUpdated'))
     } else {
-      // Show specific error messages based on the error
-      if (result.error === 'Product is already in your cart') {
-        alert('This product is already in your cart')
-      } else if (result.error === 'Product is in your pending order') {
-        alert('This product is already in one of your pending orders')
-      } else if (result.error === 'Product is no longer available') {
-        alert('This product is no longer available')
-      } else {
-        alert(result.error || t('productDetail.addToCartError'))
-      }
+      alert(t('productDetail.addToCartError'))
     }
   } catch (error) {
     console.error('Failed to add to cart:', error)
     alert(t('productDetail.addToCartError'))
   }
+}
+
+// Buy Now
+const buyNow = () => {
+  // Check if product is loaded
+  if (!productId.value) {
+    alert('Product not found')
+    return
+  }
+  
+  if (!isAuthenticated()) {
+    // Save the intended product to redirect back after login
+    sessionStorage.setItem('buyNowProduct', JSON.stringify({
+      product_id: productId.value,
+      price: productPrice.value,
+      name: productName.value,
+      artist: productArtist.value,
+      image: currentImage.value,
+      condition: productCondition.value
+    }))
+    router.push('/login?redirect=buynow')
+    return
+  }
+
+  // Clear any existing draft first
+  sessionStorage.removeItem('checkout_draft')
+  
+  // Create new draft in sessionStorage
+  const draft = {
+    source: 'product',
+    items: [
+      {
+        product_id: productId.value,
+        price_at_purchase: productPrice.value,
+        quantity: 1,
+        name: productName.value,
+        artist: productArtist.value,
+        image: currentImage.value || productImage.value,
+        condition: productCondition.value
+      }
+    ]
+  }
+  
+  sessionStorage.setItem('checkout_draft', JSON.stringify(draft))
+  router.push('/checkout')
 }
 
 // Load product data from backend
@@ -172,24 +200,19 @@ const loadProduct = async () => {
     productCondition.value = product.condition
     productPrice.value = product.price
     productDescription.value = product.description || `${product.condition} condition copy`
-    productIsActive.value = product.is_active !== 0
-
-    // Handle product images - use the same image_urls from database
+    
+    // Handle product images
     if (product.image_urls) {
       try {
-        // Parse the JSON array of images (same format saved from SellerDashboard)
         productImages.value = typeof product.image_urls === 'string' 
           ? JSON.parse(product.image_urls) 
           : product.image_urls
-        console.log('Product images from database:', productImages.value)
       } catch (e) {
         console.error('Error parsing images:', e)
-        productImages.value = [product.image] // Fallback to album cover
+        productImages.value = [product.image]
       }
     } else {
-      // No images uploaded, use album cover as fallback
       productImages.value = [product.image]
-      console.log('No product images, using album cover')
     }
     currentIndex.value = 0
     
@@ -206,10 +229,10 @@ onMounted(() => {
     router.push('/')
     return
   }
-  
   // Check if current user is a seller
   const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
   isSeller.value = user.role === 'seller' || user.role === 'admin'
+  console.log('Is seller:', isSeller.value)
   
   loadProduct()
 })
@@ -286,7 +309,6 @@ onMounted(() => {
   margin-bottom: var(--spacing-xxl);
 }
 
-/* Image Section */
 .product-image-section {
   position: sticky;
   top: 100px;
@@ -359,7 +381,6 @@ onMounted(() => {
   z-index: 10;
 }
 
-/* Product Info Section */
 .product-info-section {
   background: var(--color-bg);
   border-radius: var(--border-radius-lg);
@@ -382,38 +403,56 @@ onMounted(() => {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Product details display */
-.product-condition-display,
-.product-price-display {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-md) 0;
+/* Product details simple */
+.product-details-simple {
+  margin: var(--spacing-xl) 0;
+  padding: var(--spacing-lg) 0;
+  border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
 }
 
-.condition-label,
-.price-label {
-  font-size: var(--font-size-lg);
+.detail-row {
+  display: flex;
+  margin-bottom: var(--spacing-md);
+}
+
+.detail-label {
+  width: 100px;
   color: var(--color-text-secondary);
   font-weight: 500;
 }
 
-.condition-value {
+.detail-value {
+  flex: 1;
+  color: var(--color-text-primary);
+}
+
+.detail-value.price {
+  color: var(--color-primary);
+  font-weight: bold;
   font-size: var(--font-size-xl);
-  color: var(--color-primary);
-  font-weight: bold;
 }
 
-.price-value {
-  font-size: var(--font-size-xxl);
-  color: var(--color-primary);
-  font-weight: bold;
+.detail-row.description {
+  flex-direction: column;
 }
 
-/* Action button */
+.detail-row.description .detail-label {
+  width: 100%;
+  margin-bottom: var(--spacing-xs);
+}
+
+.detail-row.description .detail-value {
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Action buttons */
 .product-actions {
   margin-top: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .btn-add-cart {
@@ -429,57 +468,40 @@ onMounted(() => {
   transition: all var(--transition-base);
 }
 
-.btn-add-cart:hover {
+.btn-add-cart:hover:not(:disabled) {
   background: var(--color-primary-dark);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
-/* Description Section */
-.product-description-section {
-  background: var(--color-bg);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-xl);
-  box-shadow: var(--shadow-md);
-  border-top: 4px solid var(--color-primary);
-}
-
-.description-title {
-  font-size: var(--font-size-xxl);
+.btn-buy-now {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-light);
   color: var(--color-primary);
-  margin-bottom: var(--spacing-lg);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-lg);
   font-weight: bold;
+  cursor: pointer;
+  transition: all var(--transition-base);
 }
 
-.description-content {
-  font-size: var(--font-size-base);
-  color: var(--color-text-primary);
-  line-height: 1.8;
+.btn-buy-now:hover:not(:disabled) {
+  background: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-.description-content p {
-  margin: 0;
-}
-
-.unavailable-message {
-  margin-top: var(--spacing-lg);
+.seller-message {
+  margin-top: var(--spacing-xl);
   padding: var(--spacing-lg);
-  background: #f8d7da;
+  background: var(--color-accent);
   border-radius: var(--border-radius-md);
   text-align: center;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
-.unavailable-badge {
-  display: inline-block;
-  padding: var(--spacing-xs) var(--spacing-md);
-  background: var(--color-error);
-  color: white;
-  border-radius: var(--border-radius-full);
-  font-size: var(--font-size-sm);
-  font-weight: bold;
-  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-secondary);
+  border: 1px dashed var(--color-primary);
+  font-size: var(--font-size-base);
 }
 
 /* Responsive */
@@ -495,9 +517,18 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .nav-btn {
-    width: 35px;
-    height: 35px;
-    font-size: 24px;
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+  }
+  
+  .detail-row {
+    flex-direction: column;
+  }
+  
+  .detail-label {
+    width: 100%;
+    margin-bottom: var(--spacing-xs);
   }
 }
 </style>
