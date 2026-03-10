@@ -785,8 +785,7 @@ app.get('/api/orders', authenticateToken, (req, res) => {
               oi.price_at_purchase as price,
               p.condition,
               a.title as name,
-              a.cover_image_url as image,
-              p.is_active
+              a.cover_image_url as image
             FROM Order_Items oi
             JOIN Products p ON oi.product_id = p.product_id
             JOIN Albums a ON p.album_id = a.album_id
@@ -795,13 +794,10 @@ app.get('/api/orders', authenticateToken, (req, res) => {
             (err, items) => {
               if (err) reject(err);
               
-              // Check if any items in this order are now inactive (sold elsewhere)
-              const hasInactiveItems = items.some(item => item.is_active === 0);
-              
+              // DON'T filter out orders - show all orders
               resolve({
                 ...order,
-                items: items || [],
-                hasInactiveItems
+                items: items || []
               });
             }
           );
@@ -809,11 +805,7 @@ app.get('/api/orders', authenticateToken, (req, res) => {
       });
       
       Promise.all(ordersWithItems)
-        .then(results => {
-          // Filter out orders that have inactive items (products sold elsewhere)
-          const validOrders = results.filter(order => !order.hasInactiveItems);
-          res.json(validOrders);
-        })
+        .then(results => res.json(results))
         .catch(err => res.status(500).json({ error: err.message }));
     }
   );
