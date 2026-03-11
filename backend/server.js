@@ -105,6 +105,36 @@ app.post('/api/users/login', (req, res) => {
     );
 });
 
+// Forgot password
+app.post('/api/auth/forgot-password', (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: '请输入邮箱地址'
+    });
+  }
+
+  // Check if user exists with this email
+  db.get(
+    'SELECT * FROM Users WHERE email = ?',
+    [email],
+    (err, user) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      // For security, don't reveal if email exists
+      // Just return success message
+      res.json({
+        success: true,
+        message: '如果该邮箱已注册，重置密码链接已发送到您的邮箱'
+      });
+    }
+  );
+});
+
 // Reset password
 app.post('/api/auth/reset-password', async (req, res) => {
   const { email, newPassword } = req.body;

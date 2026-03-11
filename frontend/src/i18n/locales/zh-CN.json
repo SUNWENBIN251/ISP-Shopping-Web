@@ -122,6 +122,10 @@
     "sending": "发送中...",
     "backToLogin": "返回登录",
     "success": "密码重置链接已发送到您的邮箱",
+    "emailSentTitle": "邮件已发送",
+    "emailSentMessage": "重置密码的链接已发送到您的邮箱，请查收",
+    "openEmail": "前往重置密码",
+    "close": "关闭",
     "error": {
       "emailRequired": "请输入邮箱地址",
       "emailInvalid": "请输入有效的邮箱地址",
