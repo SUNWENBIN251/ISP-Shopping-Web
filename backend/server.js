@@ -257,7 +257,7 @@ app.get('/api/seller/albums', authenticateToken, requireSeller, (req, res) => {
 // Get seller's products
 app.get('/api/seller/products', authenticateToken, requireSeller, (req, res) => {
   db.all(
-    `SELECT 
+    `SELECT
       p.*,
       a.title as album_title,
       a.cover_image_url as album_cover
@@ -270,6 +270,35 @@ app.get('/api/seller/products', authenticateToken, requireSeller, (req, res) => 
         return res.status(500).json({ error: err.message });
       }
       res.json(rows);
+    }
+  );
+});
+
+// Get seller's product by product_id
+app.get('/api/seller/products/:id', authenticateToken, requireSeller, (req, res) => {
+  const productId = req.params.id;
+
+  db.get(
+    `SELECT
+      p.*,
+      a.title as album_title,
+      a.artist,
+      a.genre,
+      a.release_year,
+      a.tracklist,
+      a.cover_image_url as album_cover
+    FROM Products p
+    JOIN Albums a ON p.album_id = a.album_id
+    WHERE p.product_id = ?`,
+    [productId],
+    (err, product) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      if (!product) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+      res.json(product);
     }
   );
 });

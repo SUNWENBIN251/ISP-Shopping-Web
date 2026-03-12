@@ -370,6 +370,22 @@
     "fetchError": "Failed to load seller data",
     "searchPlaceholder": "Search album or artist name...",
     "searchResults": "Found {count} results",
-    "noSearchResults": "No matching results found"
+    "noSearchResults": "No matching results found",
+    "searchByName": "Search by Name",
+    "searchById": "Search by ID",
+    "searchByIdPlaceholder": "Enter product ID...",
+    "productFound": "Product found",
+    "productNotFound": "Product not found",
+    "searchedProduct": "Search Result",
+    "album": "Album",
+    "condition": "Condition",
+    "price": "Price",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "edit": "Edit",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "close": "Close"
   }
 }
