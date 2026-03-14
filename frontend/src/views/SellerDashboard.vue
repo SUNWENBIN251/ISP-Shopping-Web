@@ -91,7 +91,7 @@
             <span v-if="searchIdQuery && searchedProduct" class="search-result-count">
               {{ $t('seller.productFound') }}
             </span>
-            <span v-if="searchIdQuery && !isSearching && !searchedProduct" class="search-result-count error">
+            <span v-if="searchIdQuery && hasSearchedById && !isSearching && !searchedProduct" class="search-result-count error">
               {{ $t('seller.productNotFound') }}
             </span>
             <span v-if="searchIdQuery && isSearching" class="search-result-count">
@@ -431,11 +431,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { getCurrentUser, isAuthenticated } from '../services/authService'
-
 const router = useRouter()
-const { t } = useI18n()
 
 // State
 const activeTab = ref('albums')
@@ -449,6 +445,7 @@ const searchIdQuery = ref('')
 const searchType = ref('name')
 const searchedProduct = ref(null)
 const isSearching = ref(false)
+const hasSearchedById = ref(false)
 
 // Computed: Filter albums by search query
 const filteredAlbums = computed(() => {
@@ -507,12 +504,6 @@ const getProductImages = (product) => {
     }
   }
   return []
-}
-
-// Helper: Get album product count
-const getAlbumProductCount = (albumId) => {
-  const album = albums.value.find(a => a.album_id === albumId);
-  return album?.product_count || 0;
 }
 
 // Helper: Format date
@@ -955,14 +946,8 @@ const viewOrder = (order) => {
   router.push(`/order/${order.order_id}?seller=true`);
 };
 
-// Search handlers
-const handleSearch = () => {
-  // Filter is handled by computed property filteredAlbums
-  console.log('Search query:', searchQuery.value)
-}
-
 const handleSearchById = async () => {
-  const productId = searchIdQuery.value.trim()
+  const productId = String(searchIdQuery.value || '').trim()
   console.log('handleSearchById called with productId:', productId)
 
   if (!productId) {
@@ -970,6 +955,7 @@ const handleSearchById = async () => {
     return
   }
 
+  hasSearchedById.value = true
   isSearching.value = true
   searchedProduct.value = null
 
@@ -1013,6 +999,7 @@ const clearSearch = () => {
   searchQuery.value = ''
   searchIdQuery.value = ''
   searchedProduct.value = null
+  hasSearchedById.value = false
 }
 </script>
 

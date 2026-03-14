@@ -10,7 +10,7 @@ CREATE TABLE Users (
     avatar_url VARCHAR(255),
     role VARCHAR(20) NOT NULL DEFAULT 'customer',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CHECK (role IN ('customer', 'seller', 'admin'))
+    CHECK (role IN ('customer', 'admin'))
 );
 
 -- Table: Albums (Parent Table - SPU)
