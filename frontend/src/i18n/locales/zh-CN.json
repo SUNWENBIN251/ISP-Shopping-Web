@@ -33,32 +33,62 @@
   },
   "profile": {
     "title": "个人中心",
-    "notLoggedIn": "未登录",
-    "pleaseLogin": "请登录后查看个人资料",
+    "notLoggedIn": "您尚未登录",
+    "pleaseLogin": "请登录后查看您的个人资料",
     "userId": "用户ID",
     "registeredDate": "注册日期",
     "orderCount": "订单总数",
+    "customer": "买家",
+    "seller": "卖家",
+    "admin": "管理员",
     "quickActions": "快捷操作",
+    "sellerActions": "卖家操作",
     "myOrders": "我的订单",
-    "viewOrders": "查看订单历史",
+    "viewOrders": "查看和管理您的订单",
     "myWishlist": "我的收藏",
-    "viewWishlist": "查看收藏的商品",
+    "viewWishlist": "查看您收藏的商品",
     "viewCart": "查看购物车",
     "logout": "退出登录",
-    "logoutDesc": "退出当前账号",
+    "logoutDesc": "退出您的账户",
     "logoutConfirm": "确定要退出登录吗？",
     "forgotPasswordTip": "需要修改密码？",
-    "customer": "普通用户",
-    "seller": "商家",
-    "admin": "管理员",
     "fetchError": "加载个人资料失败",
-    "sellerActions": "商家操作",
-    "sellerDashboard": "商家后台",
-    "manageStore": "管理您的店铺",
-    "sellerOrders": "订单管理",
-    "viewSellerOrders": "查看客户订单",
-    "myProducts": "商品管理",
-    "manageProducts": "管理您的商品"
+    "sellerDashboard": "卖家中心",
+    "manageStore": "管理您的店铺和商品",
+    "address": {
+      "title": "收货地址",
+      "add": "添加地址",
+      "loading": "加载中...",
+      "empty": "暂无收货地址",
+      "default": "默认",
+      "edit": "编辑",
+      "delete": "删除",
+      "modal": {
+        "add": "添加地址",
+        "edit": "编辑地址",
+        "recipientName": "收件人姓名 *",
+        "phone": "联系电话 *",
+        "addressLine1": "详细地址 *",
+        "addressLine2": "地址补充信息",
+        "city": "城市 *",
+        "state": "省份/州",
+        "postalCode": "邮政编码 *",
+        "country": "国家 *",
+        "setAsDefault": "设为默认地址",
+        "cancel": "取消",
+        "save": "保存",
+        "saving": "保存中..."
+      },
+      "messages": {
+        "confirmDelete": "确定要删除这个地址吗？",
+        "saved": "地址已添加",
+        "updated": "地址已更新",
+        "deleted": "地址已删除",
+        "saveFailed": "保存地址失败",
+        "deleteFailed": "删除地址失败",
+        "validation": "请填写所有必填项"
+      }
+    }
   },
   "common": {
     "loading": "加载中...",
@@ -130,7 +160,6 @@
       "passwordMismatch": "两次输入的密码不一致",
       "registrationFailed": "注册失败，请重试"
     }
-    
   },
   "forgotPassword": {
     "title": "忘记密码",
@@ -515,7 +544,6 @@
     "removeImage": "移除图片",
     "addImage": "+ 添加图片",
     "imagesCount": "/5 张图片",
-    "minImagesRequired": "请至少上传3张图片",
     "updateProduct": "更新商品",
     "addProduct": "添加商品",
     "mint": "完美品",
@@ -532,5 +560,18 @@
     "minImagesRequired": "请至少上传3张图片",
     "confirmDeleteProduct": "确定要删除此商品吗？此操作无法撤销。",
     "confirmToggleProduct": "确定要{action}此商品吗？"
+  },
+  "countries": {
+    "china": "中国",
+    "usa": "美国",
+    "uk": "英国",
+    "canada": "加拿大",
+    "australia": "澳大利亚",
+    "japan": "日本",
+    "germany": "德国",
+    "france": "法国",
+    "korea": "韩国",
+    "singapore": "新加坡",
+    "other": "其他"
   }
 }

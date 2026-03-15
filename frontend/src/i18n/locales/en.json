@@ -38,7 +38,11 @@
     "userId": "User ID",
     "registeredDate": "Member Since",
     "orderCount": "Total Orders",
+    "customer": "Customer",
+    "seller": "Seller",
+    "admin": "Administrator",
     "quickActions": "Quick Actions",
+    "sellerActions": "Seller Actions",
     "myOrders": "My Orders",
     "viewOrders": "View your order history",
     "myWishlist": "My Wishlist",
@@ -48,17 +52,43 @@
     "logoutDesc": "Sign out of your account",
     "logoutConfirm": "Are you sure you want to logout?",
     "forgotPasswordTip": "Need to change your password? ",
-    "customer": "Customer",
-    "seller": "Seller",
-    "admin": "Administrator",
     "fetchError": "Failed to load profile",
-    "sellerActions": "Seller Actions",
     "sellerDashboard": "Seller Dashboard",
     "manageStore": "Manage your store",
-    "sellerOrders": "Orders",
-    "viewSellerOrders": "View customer orders",
-    "myProducts": "My Products",
-    "manageProducts": "Manage your inventory"
+    "address": {
+      "title": "Shipping Address",
+      "add": "Add Address",
+      "loading": "Loading...",
+      "empty": "No shipping addresses",
+      "default": "Default",
+      "edit": "Edit",
+      "delete": "Delete",
+      "modal": {
+        "add": "Add Address",
+        "edit": "Edit Address",
+        "recipientName": "Recipient Name *",
+        "phone": "Phone Number *",
+        "addressLine1": "Address Line 1 *",
+        "addressLine2": "Address Line 2",
+        "city": "City *",
+        "state": "State/Province",
+        "postalCode": "Postal Code *",
+        "country": "Country *",
+        "setAsDefault": "Set as default address",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving..."
+      },
+      "messages": {
+        "confirmDelete": "Are you sure you want to delete this address?",
+        "saved": "Address saved successfully",
+        "updated": "Address updated successfully",
+        "deleted": "Address deleted successfully",
+        "saveFailed": "Failed to save address",
+        "deleteFailed": "Failed to delete address",
+        "validation": "Please fill in all required fields"
+      }
+    }
   },
   "common": {
     "email": "Email",
@@ -131,7 +161,7 @@
       "registrationFailed": "Registration failed. Please try again."
     }
   },
-   "forgotPassword": {
+  "forgotPassword": {
     "title": "Forgot Password",
     "subtitle": "Enter your email address and we'll send you a link to reset your password.",
     "email": "Email Address",
@@ -140,6 +170,10 @@
     "sending": "Sending...",
     "backToLogin": "Back to Login",
     "success": "Password reset link has been sent to your email.",
+    "emailSentTitle": "Email Sent",
+    "emailSentMessage": "Password reset link has been sent to your email. Please check your inbox.",
+    "openEmail": "Open Email",
+    "close": "Close",
     "error": {
       "emailRequired": "Please enter your email address",
       "emailInvalid": "Please enter a valid email address",
@@ -527,5 +561,18 @@
     "confirmRemoveImage": "Are you sure you want to remove this image?",
     "confirmDeleteProduct": "Are you sure you want to delete this product? This action cannot be undone.",
     "confirmToggleProduct": "Are you sure you want to {action} this product?"
+  },
+  "countries": {
+    "china": "China",
+    "usa": "United States",
+    "uk": "United Kingdom",
+    "canada": "Canada",
+    "australia": "Australia",
+    "japan": "Japan",
+    "germany": "Germany",
+    "france": "France",
+    "korea": "South Korea",
+    "singapore": "Singapore",
+    "other": "Other"
   }
 }
