@@ -98,7 +98,10 @@
     "email": "郵箱",
     "cart": "購物車",
     "forgotPassword": "重置密碼",
-    "login": "登錄"
+    "login": "登錄",
+    "error": "錯誤",
+    "failed": "操作失敗",
+    "success": "成功"
   },
   "login": {
     "title": "登錄",
@@ -362,11 +365,34 @@
       "completed": "已完成",
       "cancelled": "已取消"
     },
-    "payFeature": "支付功能即將推出！"
+    "payFeature": "支付功能即將推出！",
+    "filter": {
+      "byStatus": "狀態篩選：",
+      "sortBy": "排序方式：",
+      "all": "全部訂單",
+      "pending": "待付款",
+      "paid": "已付款",
+      "shipped": "已發貨",
+      "completed": "已完成",
+      "cancelled": "已取消",
+      "date": "訂單日期",
+      "total": "訂單金額",
+      "status": "訂單狀態",
+      "clear": "清除篩選"
+    },
+    "timeline": {
+      "paid": "付款於",
+      "shipped": "發貨於",
+      "completed": "完成於",
+      "cancelled": "取消於"
+    },
+    "noFilteredResults": "未找到訂單",
+    "noFilteredResultsDesc": "沒有符合當前篩選條件的訂單。請嘗試更改篩選條件。"
   },
   "orderDetail": {
     "title": "訂單詳情",
     "backToList": "返回訂單列表",
+    "backToSeller": "返回賣家後台",
     "status": "訂單狀態",
     "orderDate": "下單時間",
     "shippingInfo": "配送信息",
@@ -386,51 +412,18 @@
     "confirmReceiptMsg": "您確認已經收到商品了嗎？",
     "cancelFailed": "取消訂單失敗",
     "confirmFailed": "確認收貨失敗",
-    "payFeature": "支付功能即將推出！"
-  },
-  "checkout": {
-    "title": "結帳",
-    "cartEmpty": "購物車是空的",
-    "cartEmptyDesc": "請在結帳前添加商品到購物車",
-    "continueShopping": "繼續購物",
-    "shippingAddress": "收貨地址",
-    "fullName": "收件人姓名",
-    "fullNamePlaceholder": "請輸入收件人姓名",
-    "addressLine1": "地址第一行",
-    "addressLine1Placeholder": "街道地址",
-    "addressLine2": "地址第二行（可選）",
-    "addressLine2Placeholder": "公寓、套房、單元等",
-    "city": "城市",
-    "cityPlaceholder": "請輸入城市",
-    "postalCode": "郵遞區號",
-    "postalCodePlaceholder": "請輸入郵遞區號",
-    "country": "國家",
-    "selectCountry": "請選擇國家",
-    "other": "其他",
-    "phone": "聯繫電話",
-    "phonePlaceholder": "請輸入聯繫電話",
-    "paymentMethod": "支付方式",
-    "creditCard": "信用卡",
-    "bankTransfer": "銀行轉帳",
-    "cardNumber": "卡號",
-    "cardNumberPlaceholder": "1234 5678 9012 3456",
-    "expiry": "有效期",
-    "orderSummary": "訂單摘要",
-    "subtotal": "商品合計",
-    "shipping": "運費",
-    "total": "訂單總計",
-    "placeOrder": "提交訂單",
-    "processing": "處理中...",
-    "terms": "提交訂單即表示您同意我們的服務條款和隱私政策",
-    "orderSuccess": "訂單提交成功！正在跳轉到訂單詳情...",
-    "orderFailed": "訂單提交失敗，請重試",
-    "mpayNote": "使用 Mpay 支付",
-    "mpayDescription": "Mpay 支付方式",
-    "selectAddress": "選擇收貨地址",
-    "manageAddresses": "管理地址",
-    "useThisAddress": "使用此地址",
-    "newAddress": "使用新地址",
-    "addressRequired": "請選擇收貨地址"
+    "payFeature": "支付功能即將推出！",
+    "timeline": {
+      "title": "訂單時間線",
+      "placed": "訂單已創建",
+      "payment": "付款已確認",
+      "shipped": "已發貨",
+      "delivered": "已送達",
+      "cancelled": "已取消",
+      "pending": "待處理",
+      "notYet": "尚未"
+    },
+    "sellerView": "您正在以賣家身份查看此訂單。"
   },
   "forum": {
     "placeholder": "分享你的想法...（最多144字）",
@@ -493,6 +486,7 @@
     "deactivate": "下架",
     "close": "關閉",
     "search": "搜索",
+    "searching": "搜索中...",
     "pageTitle": "商家後台",
     "myAlbums": "我的專輯",
     "addNewAlbum": "添加新專輯",
@@ -559,7 +553,44 @@
     "other": "其他",
     "confirmRemoveImage": "確定要移除此圖片嗎？",
     "confirmDeleteProduct": "確定要刪除此商品嗎？此操作無法撤銷。",
-    "confirmToggleProduct": "確定要{action}此商品嗎？"
+    "confirmToggleProduct": "確定要{action}此商品嗎？",
+    "orderFilter": {
+      "status": "狀態篩選：",
+      "sortBy": "排序方式：",
+      "order": "排序：",
+      "all": "全部訂單",
+      "pending": "待付款",
+      "paid": "已付款",
+      "shipped": "已發貨",
+      "completed": "已完成",
+      "cancelled": "已取消",
+      "date": "訂單日期",
+      "paymentDate": "付款日期",
+      "shippingDate": "發貨日期",
+      "completionDate": "完成日期",
+      "total": "訂單金額",
+      "newest": "最新優先",
+      "oldest": "最早優先"
+    },
+    "orderStatus": {
+      "pending": "待付款",
+      "paid": "已付款",
+      "shipped": "已發貨",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    },
+    "orderActions": {
+      "markShipped": "標記為已發貨",
+      "markCompleted": "標記為已完成",
+      "cancel": "取消訂單"
+    },
+    "timeline": {
+      "paid": "付款時間：",
+      "shipped": "發貨時間：",
+      "completed": "完成時間：",
+      "cancelled": "取消時間："
+    },
+    "emptyOrders": "沒有找到符合條件的訂單。"
   },
   "countries": {
     "china": "中國",

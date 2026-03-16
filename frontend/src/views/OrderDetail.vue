@@ -19,10 +19,55 @@
       <div v-else-if="order" class="order-content">
         <div class="order-header">
           <h1 class="page-title">{{ $t('orderDetail.title') }} #{{ order.id }}</h1>
-          <!-- Change this back link based on seller view -->
           <router-link :to="isSellerView ? '/seller?tab=orders' : '/orders'" class="back-link">
-            ← {{ isSellerView ? 'Back to Seller Dashboard' : $t('orderDetail.backToList') }}
+            ← {{ isSellerView ? $t('orderDetail.backToSeller') : $t('orderDetail.backToList') }}
           </router-link>
+        </div>
+
+        <!-- Timeline Card -->
+        <div class="timeline-card">
+          <h2>{{ $t('orderDetail.timeline.title') }}</h2>
+          <div class="timeline">
+            <div class="timeline-item" :class="{ active: order.created_at }">
+              <div class="timeline-icon">📝</div>
+              <div class="timeline-content">
+                <div class="timeline-title">{{ $t('orderDetail.timeline.placed') }}</div>
+                <div class="timeline-date">{{ formatDateTime(order.created_at) }}</div>
+              </div>
+            </div>
+            
+            <div class="timeline-item" :class="{ active: order.paid_at }">
+              <div class="timeline-icon">💰</div>
+              <div class="timeline-content">
+                <div class="timeline-title">{{ $t('orderDetail.timeline.payment') }}</div>
+                <div class="timeline-date">{{ formatDateTime(order.paid_at) || $t('orderDetail.timeline.pending') }}</div>
+              </div>
+            </div>
+            
+            <div class="timeline-item" :class="{ active: order.shipped_at }">
+              <div class="timeline-icon">📦</div>
+              <div class="timeline-content">
+                <div class="timeline-title">{{ $t('orderDetail.timeline.shipped') }}</div>
+                <div class="timeline-date">{{ formatDateTime(order.shipped_at) || $t('orderDetail.timeline.notYet') }}</div>
+              </div>
+            </div>
+            
+            <div class="timeline-item" :class="{ active: order.completed_at }">
+              <div class="timeline-icon">✅</div>
+              <div class="timeline-content">
+                <div class="timeline-title">{{ $t('orderDetail.timeline.delivered') }}</div>
+                <div class="timeline-date">{{ formatDateTime(order.completed_at) || $t('orderDetail.timeline.notYet') }}</div>
+              </div>
+            </div>
+            
+            <div v-if="order.cancelled_at" class="timeline-item cancelled active">
+              <div class="timeline-icon">❌</div>
+              <div class="timeline-content">
+                <div class="timeline-title">{{ $t('orderDetail.timeline.cancelled') }}</div>
+                <div class="timeline-date">{{ formatDateTime(order.cancelled_at) }}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Order Status Card -->
@@ -44,7 +89,7 @@
           <h2>{{ $t('orderDetail.shippingInfo') }}</h2>
           <div class="shipping-details">
             <p><strong>{{ $t('orderDetail.address') }}:</strong> {{ order.shipping_address }}</p>
-            <p><strong>{{ $t('orderDetail.paymentMethod') }}:</strong> {{ order.payment_method || t('orderDetail.notSpecified') }}</p>
+            <p><strong>{{ $t('orderDetail.paymentMethod') }}:</strong> {{ order.payment_method || $t('orderDetail.notSpecified') }}</p>
             <p v-if="order.transaction_id"><strong>{{ $t('orderDetail.transactionId') }}:</strong> {{ order.transaction_id }}</p>
             <p v-if="order.paid_at"><strong>{{ $t('orderDetail.paidAt') }}:</strong> {{ formatDate(order.paid_at) }}</p>
           </div>
@@ -109,6 +154,11 @@
             {{ $t('orderDetail.confirmReceipt') }}
           </button>
         </div>
+
+        <!-- Seller View Message -->
+        <div v-if="isSellerView" class="seller-view-message">
+          {{ $t('orderDetail.sellerView') }}
+        </div>
       </div>
     </div>
   </div>
@@ -128,6 +178,20 @@ const order = ref(null)
 const isLoading = ref(true)
 const error = ref(null)
 const isSellerView = ref(false)
+
+
+// ADD THIS method
+const formatDateTime = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 // Load order from API
 const loadOrder = async () => {
@@ -634,6 +698,89 @@ onMounted(() => {
   color: var(--color-primary-dark);
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-primary-light);
+}
+
+/* ADD THESE STYLES */
+
+/* Timeline Card */
+.timeline-card {
+  background: var(--color-bg-light);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+}
+
+.timeline-card h2 {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  position: relative;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.timeline-item.active {
+  opacity: 1;
+}
+
+.timeline-item.cancelled .timeline-icon {
+  background: #e74c3c;
+  color: white;
+}
+
+.timeline-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.timeline-item.active .timeline-icon {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+
+.timeline-content {
+  flex: 1;
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.timeline-item:last-child .timeline-content {
+  border-bottom: none;
+}
+
+.timeline-title {
+  font-size: var(--font-size-base);
+  font-weight: bold;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.timeline-date {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-family: monospace;
 }
 
 /* Responsive */

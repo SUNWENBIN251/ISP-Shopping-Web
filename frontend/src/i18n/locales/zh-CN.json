@@ -98,7 +98,10 @@
     "email": "邮箱",
     "cart": "购物车",
     "forgotPassword": "重置密码",
-    "login": "登录"
+    "login": "登录",
+    "error": "错误",
+    "failed": "操作失败",
+    "success": "成功"
   },
   "login": {
     "title": "登录",
@@ -362,11 +365,34 @@
       "completed": "已完成",
       "cancelled": "已取消"
     },
-    "payFeature": "支付功能即将推出！"
+    "payFeature": "支付功能即将推出！",
+    "filter": {
+      "byStatus": "状态筛选：",
+      "sortBy": "排序方式：",
+      "all": "全部订单",
+      "pending": "待付款",
+      "paid": "已付款",
+      "shipped": "已发货",
+      "completed": "已完成",
+      "cancelled": "已取消",
+      "date": "订单日期",
+      "total": "订单金额",
+      "status": "订单状态",
+      "clear": "清除筛选"
+    },
+    "timeline": {
+      "paid": "付款于",
+      "shipped": "发货于",
+      "completed": "完成于",
+      "cancelled": "取消于"
+    },
+    "noFilteredResults": "未找到订单",
+    "noFilteredResultsDesc": "没有符合当前筛选条件的订单。请尝试更改筛选条件。"
   },
   "orderDetail": {
     "title": "订单详情",
     "backToList": "返回订单列表",
+    "backToSeller": "返回卖家后台",
     "status": "订单状态",
     "orderDate": "下单时间",
     "shippingInfo": "配送信息",
@@ -386,51 +412,18 @@
     "confirmReceiptMsg": "您确认已经收到商品了吗？",
     "cancelFailed": "取消订单失败",
     "confirmFailed": "确认收货失败",
-    "payFeature": "支付功能即将推出！"
-  },
-  "checkout": {
-    "title": "结算",
-    "cartEmpty": "购物车是空的",
-    "cartEmptyDesc": "请在结算前添加商品到购物车",
-    "continueShopping": "继续购物",
-    "shippingAddress": "收货地址",
-    "fullName": "收件人姓名",
-    "fullNamePlaceholder": "请输入收件人姓名",
-    "addressLine1": "地址第一行",
-    "addressLine1Placeholder": "街道地址",
-    "addressLine2": "地址第二行（可选）",
-    "addressLine2Placeholder": "公寓、套房、单元等",
-    "city": "城市",
-    "cityPlaceholder": "请输入城市",
-    "postalCode": "邮政编码",
-    "postalCodePlaceholder": "请输入邮政编码",
-    "country": "国家",
-    "selectCountry": "请选择国家",
-    "other": "其他",
-    "phone": "联系电话",
-    "phonePlaceholder": "请输入联系电话",
-    "paymentMethod": "支付方式",
-    "creditCard": "信用卡",
-    "bankTransfer": "银行转账",
-    "cardNumber": "卡号",
-    "cardNumberPlaceholder": "1234 5678 9012 3456",
-    "expiry": "有效期",
-    "orderSummary": "订单摘要",
-    "subtotal": "商品合计",
-    "shipping": "运费",
-    "total": "订单总计",
-    "placeOrder": "提交订单",
-    "processing": "处理中...",
-    "terms": "提交订单即表示您同意我们的服务条款和隐私政策",
-    "orderSuccess": "订单提交成功！正在跳转到订单详情...",
-    "orderFailed": "订单提交失败，请重试",
-    "mpayNote": "使用 Mpay 支付",
-    "mpayDescription": "Mpay 支付方式",
-    "selectAddress": "选择收货地址",
-    "manageAddresses": "管理地址",
-    "useThisAddress": "使用此地址",
-    "newAddress": "使用新地址",
-    "addressRequired": "请选择收货地址"
+    "payFeature": "支付功能即将推出！",
+    "timeline": {
+      "title": "订单时间线",
+      "placed": "订单已创建",
+      "payment": "付款已确认",
+      "shipped": "已发货",
+      "delivered": "已送达",
+      "cancelled": "已取消",
+      "pending": "待处理",
+      "notYet": "尚未"
+    },
+    "sellerView": "您正在以卖家身份查看此订单。"
   },
   "forum": {
     "placeholder": "分享你的想法...（最多144字）",
@@ -493,6 +486,7 @@
     "deactivate": "下架",
     "close": "关闭",
     "search": "搜索",
+    "searching": "搜索中...",
     "pageTitle": "商家后台",
     "myAlbums": "我的专辑",
     "addNewAlbum": "添加新专辑",
@@ -544,6 +538,7 @@
     "removeImage": "移除图片",
     "addImage": "+ 添加图片",
     "imagesCount": "/5 张图片",
+    "minImagesRequired": "请至少上传3张图片",
     "updateProduct": "更新商品",
     "addProduct": "添加商品",
     "mint": "完美品",
@@ -557,9 +552,45 @@
     "hipHop": "嘻哈",
     "other": "其他",
     "confirmRemoveImage": "确定要移除此图片吗？",
-    "minImagesRequired": "请至少上传3张图片",
     "confirmDeleteProduct": "确定要删除此商品吗？此操作无法撤销。",
-    "confirmToggleProduct": "确定要{action}此商品吗？"
+    "confirmToggleProduct": "确定要{action}此商品吗？",
+    "orderFilter": {
+      "status": "状态筛选：",
+      "sortBy": "排序方式：",
+      "order": "排序：",
+      "all": "全部订单",
+      "pending": "待付款",
+      "paid": "已付款",
+      "shipped": "已发货",
+      "completed": "已完成",
+      "cancelled": "已取消",
+      "date": "订单日期",
+      "paymentDate": "付款日期",
+      "shippingDate": "发货日期",
+      "completionDate": "完成日期",
+      "total": "订单金额",
+      "newest": "最新优先",
+      "oldest": "最早优先"
+    },
+    "orderStatus": {
+      "pending": "待付款",
+      "paid": "已付款",
+      "shipped": "已发货",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    },
+    "orderActions": {
+      "markShipped": "标记为已发货",
+      "markCompleted": "标记为已完成",
+      "cancel": "取消订单"
+    },
+    "timeline": {
+      "paid": "付款时间：",
+      "shipped": "发货时间：",
+      "completed": "完成时间：",
+      "cancelled": "取消时间："
+    },
+    "emptyOrders": "没有找到符合条件的订单。"
   },
   "countries": {
     "china": "中国",

@@ -362,12 +362,35 @@
       "completed": "Completed",
       "cancelled": "Cancelled"
     },
-    "payFeature": "Payment feature coming soon!"
+    "payFeature": "Payment feature coming soon!",
+    "filter": {
+      "byStatus": "Filter by Status:",
+      "sortBy": "Sort by:",
+      "all": "All Orders",
+      "pending": "Pending Payment",
+      "paid": "Paid",
+      "shipped": "Shipped",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "date": "Order Date",
+      "total": "Total Amount",
+      "status": "Status",
+      "clear": "Clear Filters"
+    },
+    "timeline": {
+      "paid": "Paid on",
+      "shipped": "Shipped on",
+      "completed": "Completed on",
+      "cancelled": "Cancelled on"
+    },
+    "noFilteredResults": "No Orders Found",
+    "noFilteredResultsDesc": "No orders match your current filter. Try changing your filter criteria."
   },
   "orderDetail": {
     "title": "Order Details",
     "backToList": "Back to Orders",
-    "status": "Status",
+    "backToSeller": "Back to Seller Dashboard",
+    "status": "Order Status",
     "orderDate": "Order Date",
     "shippingInfo": "Shipping Information",
     "address": "Shipping Address",
@@ -386,51 +409,18 @@
     "confirmReceiptMsg": "Have you received your order?",
     "cancelFailed": "Failed to cancel order",
     "confirmFailed": "Failed to confirm receipt",
-    "payFeature": "Payment feature coming soon!"
-  },
-  "checkout": {
-    "title": "Checkout",
-    "cartEmpty": "Your cart is empty",
-    "cartEmptyDesc": "Add some items to your cart before checking out.",
-    "continueShopping": "Continue Shopping",
-    "shippingAddress": "Shipping Address",
-    "fullName": "Full Name",
-    "fullNamePlaceholder": "Enter your full name",
-    "addressLine1": "Address Line 1",
-    "addressLine1Placeholder": "Street address, P.O. box",
-    "addressLine2": "Address Line 2 (Optional)",
-    "addressLine2Placeholder": "Apartment, suite, unit, building",
-    "city": "City",
-    "cityPlaceholder": "Enter your city",
-    "postalCode": "Postal Code",
-    "postalCodePlaceholder": "Enter postal code",
-    "country": "Country",
-    "selectCountry": "Select your country",
-    "other": "Other",
-    "phone": "Phone Number",
-    "phonePlaceholder": "Enter your phone number",
-    "paymentMethod": "Payment Method",
-    "creditCard": "Credit Card",
-    "bankTransfer": "Bank Transfer",
-    "cardNumber": "Card Number",
-    "cardNumberPlaceholder": "1234 5678 9012 3456",
-    "expiry": "Expiry Date",
-    "orderSummary": "Order Summary",
-    "subtotal": "Subtotal",
-    "shipping": "Shipping",
-    "total": "Total",
-    "placeOrder": "Place Order",
-    "processing": "Processing...",
-    "terms": "By placing your order, you agree to our Terms of Service and Privacy Policy.",
-    "orderSuccess": "Order placed successfully! Redirecting to order details...",
-    "orderFailed": "Failed to place order. Please try again.",
-    "mpayNote": "Pay with Mpay",
-    "mpayDescription": "Mpay payment",
-    "selectAddress": "Select Shipping Address",
-    "manageAddresses": "Manage Addresses",
-    "useThisAddress": "Use this address",
-    "newAddress": "Use new address",
-    "addressRequired": "Please select a shipping address"
+    "payFeature": "Payment feature coming soon!",
+    "timeline": {
+      "title": "Order Timeline",
+      "placed": "Order Placed",
+      "payment": "Payment Confirmed",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "pending": "Pending",
+      "notYet": "Not yet"
+    },
+    "sellerView": "You are viewing this order as a seller."
   },
   "forum": {
     "placeholder": "Share your thoughts... (max 144 characters)",
@@ -560,7 +550,44 @@
     "other": "Other",
     "confirmRemoveImage": "Are you sure you want to remove this image?",
     "confirmDeleteProduct": "Are you sure you want to delete this product? This action cannot be undone.",
-    "confirmToggleProduct": "Are you sure you want to {action} this product?"
+    "confirmToggleProduct": "Are you sure you want to {action} this product?",
+    "orderFilter": {
+      "status": "Status Filter:",
+      "sortBy": "Sort By:",
+      "order": "Order:",
+      "all": "All Orders",
+      "pending": "Pending Payment",
+      "paid": "Paid",
+      "shipped": "Shipped",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "date": "Order Date",
+      "paymentDate": "Payment Date",
+      "shippingDate": "Shipping Date",
+      "completionDate": "Completion Date",
+      "total": "Total Amount",
+      "newest": "Newest First",
+      "oldest": "Oldest First"
+    },
+    "orderStatus": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "shipped": "Shipped",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "orderActions": {
+      "markShipped": "Mark as Shipped",
+      "markCompleted": "Mark as Completed",
+      "cancel": "Cancel Order"
+    },
+    "timeline": {
+      "paid": "Paid:",
+      "shipped": "Shipped:",
+      "completed": "Completed:",
+      "cancelled": "Cancelled:"
+    },
+    "emptyOrders": "No orders found matching the filter."
   },
   "countries": {
     "china": "China",

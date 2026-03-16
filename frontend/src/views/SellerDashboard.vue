@@ -310,22 +310,118 @@
         </form>
       </div>
 
-      <!-- Orders -->
+      <!-- Orders Tab with Filtering -->
       <div v-if="activeTab === 'orders'" class="tab-content">
         <h2 class="section-title">{{ $t("seller.ordersTab") }}</h2>
+        
+                <!-- Filter Controls -->
+        <div class="filter-section">
+          <div class="filter-group">
+            <label>{{ $t('seller.orderFilter.status') }}</label>
+            <select v-model="orderFilter.status" class="filter-select">
+              <option value="all">{{ $t('seller.orderFilter.all') }}</option>
+              <option value="pending">{{ $t('seller.orderFilter.pending') }}</option>
+              <option value="paid">{{ $t('seller.orderFilter.paid') }}</option>
+              <option value="shipped">{{ $t('seller.orderFilter.shipped') }}</option>
+              <option value="completed">{{ $t('seller.orderFilter.completed') }}</option>
+              <option value="cancelled">{{ $t('seller.orderFilter.cancelled') }}</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <label>{{ $t('seller.orderFilter.sortBy') }}</label>
+            <select v-model="orderFilter.sortBy" class="filter-select">
+              <option value="created_at">{{ $t('seller.orderFilter.date') }}</option>
+              <option value="paid_at">{{ $t('seller.orderFilter.paymentDate') }}</option>
+              <option value="shipped_at">{{ $t('seller.orderFilter.shippingDate') }}</option>
+              <option value="completed_at">{{ $t('seller.orderFilter.completionDate') }}</option>
+              <option value="total_amount">{{ $t('seller.orderFilter.total') }}</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <label>{{ $t('seller.orderFilter.order') }}</label>
+            <select v-model="orderFilter.sortOrder" class="filter-select">
+              <option value="desc">{{ $t('seller.orderFilter.newest') }}</option>
+              <option value="asc">{{ $t('seller.orderFilter.oldest') }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Orders List -->
         <div class="orders-list">
-          <div v-for="order in orders" :key="order.order_id" class="order-item">
+          <div v-for="order in filteredOrders" :key="order.order_id" class="order-item">
             <div class="order-header">
-              <span>{{ $t("seller.orderNumber") }}{{ order.order_id }}</span>
-              <span class="order-status" :class="order.status">{{ $t('orders.status.' + order.status) }}</span>
+              <div class="order-title">
+                <span>{{ $t('seller.orderNumber') }}{{ order.order_id }}</span>
+                <span class="order-date">{{ formatDate(order.created_at) }}</span>
+              </div>
+              <span class="order-status" :class="order.status">
+                {{ getStatusText(order.status) }}
+              </span>
             </div>
+            
             <div class="order-details">
-              <p>{{ $t("seller.date") }} {{ formatDate(order.created_at) }}</p>
-              <p>{{ $t("seller.total") }} ¥{{ order.total_amount }}</p>
-              <p>{{ $t("seller.itemsLabel") }} {{ order.item_count }}</p>
-              <p>{{ $t("seller.customer") }} {{ order.customer_name }}</p>
+              <p><strong>{{ $t('seller.customer') }}</strong> {{ order.customer_name }}</p>
+              <p><strong>{{ $t('seller.total') }}</strong> ¥{{ order.total_amount }}</p>
+              <p><strong>{{ $t('seller.itemsLabel') }}</strong> {{ order.item_count }}</p>
+              
+              <!-- Status Timeline -->
+              <div class="status-timeline">
+                <div v-if="order.paid_at" class="timeline-item">
+                  <span class="timeline-label">{{ $t('seller.timeline.paid') }}</span>
+                  <span class="timeline-date">{{ formatDateTime(order.paid_at) }}</span>
+                </div>
+                <div v-if="order.shipped_at" class="timeline-item">
+                  <span class="timeline-label">{{ $t('seller.timeline.shipped') }}</span>
+                  <span class="timeline-date">{{ formatDateTime(order.shipped_at) }}</span>
+                </div>
+                <div v-if="order.completed_at" class="timeline-item">
+                  <span class="timeline-label">{{ $t('seller.timeline.completed') }}</span>
+                  <span class="timeline-date">{{ formatDateTime(order.completed_at) }}</span>
+                </div>
+                <div v-if="order.cancelled_at" class="timeline-item">
+                  <span class="timeline-label">{{ $t('seller.timeline.cancelled') }}</span>
+                  <span class="timeline-date">{{ formatDateTime(order.cancelled_at) }}</span>
+                </div>
+              </div>
             </div>
-            <button class="btn-secondary" @click="viewOrder(order)">{{ $t("seller.viewDetails") }}</button>
+            
+            <div class="order-actions">
+              <button class="btn-secondary" @click="viewOrder(order)">
+                {{ $t("seller.viewDetails") }}
+              </button>
+              
+              <!-- Status Update Buttons for Seller -->
+              <div class="status-actions">
+                <button 
+                  v-if="order.status === 'paid'"
+                  class="btn-status shipped"
+                  @click="updateOrderStatus(order, 'shipped')"
+                >
+                  {{ $t('seller.orderActions.markShipped') }}
+                </button>
+                <button 
+                  v-if="order.status === 'shipped'"
+                  class="btn-status completed"
+                  @click="updateOrderStatus(order, 'completed')"
+                >
+                  {{ $t('seller.orderActions.markCompleted') }}
+                </button>
+                <button 
+                  v-if="order.status === 'pending' || order.status === 'paid'"
+                  class="btn-status cancelled"
+                  @click="updateOrderStatus(order, 'cancelled')"
+                >
+                  {{ $t('seller.orderActions.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Empty State -->
+          <div v-if="filteredOrders.length === 0" class="empty-orders">
+            <p>{{ $t('seller.emptyOrders') }}</p>
           </div>
         </div>
       </div>
@@ -488,6 +584,13 @@ const productForm = ref({
   price: '',
   description: '',
   images: []
+})
+
+// Order filter state - ADD THIS
+const orderFilter = ref({
+  status: 'all',
+  sortBy: 'created_at',
+  sortOrder: 'desc'
 })
 
 // Refs for file inputs
@@ -944,6 +1047,8 @@ const closeProductModal = () => {
   }
 }
 
+
+
 const viewOrder = (order) => {
   // Navigate to order detail with a query param to indicate seller view
   router.push(`/order/${order.order_id}?seller=true`);
@@ -1004,6 +1109,93 @@ const clearSearch = () => {
   searchedProduct.value = null
   hasSearchedById.value = false
 }
+
+// Computed: Filter and sort orders - ADD THIS
+const filteredOrders = computed(() => {
+  let filtered = [...orders.value]
+  
+  // Apply status filter
+  if (orderFilter.value.status !== 'all') {
+    filtered = filtered.filter(order => order.status === orderFilter.value.status)
+  }
+  
+  // Apply sorting
+  filtered.sort((a, b) => {
+    let aVal = a[orderFilter.value.sortBy]
+    let bVal = b[orderFilter.value.sortBy]
+    
+    // Handle undefined values (put them at the end)
+    if (aVal === undefined || aVal === null) aVal = orderFilter.value.sortOrder === 'desc' ? 0 : '9999-12-31'
+    if (bVal === undefined || bVal === null) bVal = orderFilter.value.sortOrder === 'desc' ? 0 : '9999-12-31'
+    
+    if (orderFilter.value.sortOrder === 'desc') {
+      return aVal > bVal ? -1 : 1
+    } else {
+      return aVal < bVal ? -1 : 1
+    }
+  })
+  
+  return filtered
+})
+
+// Update order status (for seller) - ADD THIS
+const updateOrderStatus = async (order, newStatus) => {
+  const confirmMessages = {
+    shipped: t('seller.orderActions.markShipped') + '?',
+    completed: t('seller.orderActions.markCompleted') + '?',
+    cancelled: t('seller.orderActions.cancel') + '?'
+  }
+  
+  if (!confirm(confirmMessages[newStatus])) return
+  
+  try {
+    const token = localStorage.getItem('token')
+    const response = await fetch(`/api/seller/orders/${order.order_id}/status`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: newStatus })
+    })
+    
+    if (response.ok) {
+      alert(t('seller.orderActions.mark' + newStatus.charAt(0).toUpperCase() + newStatus.slice(1)) + '!')
+      await loadSellerData()
+    } else {
+      const error = await response.json()
+      alert(t('common.error') + ': ' + (error.error || t('common.failed')))
+    }
+  } catch (error) {
+    console.error('Failed to update order status:', error)
+    alert(t('common.failed'))
+  }
+}
+
+const getStatusText = (status) => {
+  const statusMap = {
+    'pending': t('seller.orderStatus.pending'),
+    'paid': t('seller.orderStatus.paid'),
+    'shipped': t('seller.orderStatus.shipped'),
+    'completed': t('seller.orderStatus.completed'),
+    'cancelled': t('seller.orderStatus.cancelled')
+  }
+  return statusMap[status] || status
+}
+
+// Enhanced date formatting - ADD THIS
+const formatDateTime = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 </script>
 
 <style scoped>
@@ -1748,6 +1940,136 @@ const clearSearch = () => {
   border-radius: var(--border-radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
+}
+
+/* Filter Section - ADD THESE STYLES */
+.filter-section {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--color-bg-light);
+  border-radius: var(--border-radius-md);
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.filter-group label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.filter-select {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-bg);
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Status Timeline - ADD THESE STYLES */
+.status-timeline {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px dashed var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.timeline-item {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xs) 0;
+}
+
+.timeline-label {
+  color: var(--color-text-secondary);
+  min-width: 80px;
+}
+
+.timeline-date {
+  color: var(--color-text-primary);
+  font-family: monospace;
+}
+
+/* Status Action Buttons - ADD THESE STYLES */
+.status-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.btn-status {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.btn-status.shipped {
+  background: #3498db;
+  color: white;
+}
+
+.btn-status.shipped:hover {
+  background: #2980b9;
+}
+
+.btn-status.completed {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-status.completed:hover {
+  background: #2ecc71;
+}
+
+.btn-status.cancelled {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-status.cancelled:hover {
+  background: #c0392b;
+}
+
+.order-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.order-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.order-date {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.empty-orders {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-light);
+  border-radius: var(--border-radius-md);
 }
 
 @media (max-width: 768px) {

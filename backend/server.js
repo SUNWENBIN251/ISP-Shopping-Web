@@ -859,7 +859,7 @@ app.post('/api/orders/create', authenticateToken, (req, res) => {
   }
 });
 
-// Get user's orders
+// Get user's orders (with all timestamp fields)
 app.get('/api/orders', authenticateToken, (req, res) => {
   const userId = req.user.userId;
   
@@ -869,10 +869,13 @@ app.get('/api/orders', authenticateToken, (req, res) => {
       o.total_amount as total,
       o.status,
       o.created_at as date,
+      o.paid_at,
+      o.shipped_at,
+      o.completed_at,
+      o.cancelled_at,
       o.shipping_address,
       o.payment_method,
-      o.transaction_id,
-      o.paid_at
+      o.transaction_id
     FROM Orders o
     WHERE o.user_id = ?
     ORDER BY o.created_at DESC`,
@@ -902,7 +905,6 @@ app.get('/api/orders', authenticateToken, (req, res) => {
             (err, items) => {
               if (err) reject(err);
               
-              // DON'T filter out orders - show all orders
               resolve({
                 ...order,
                 items: items || []
@@ -919,7 +921,7 @@ app.get('/api/orders', authenticateToken, (req, res) => {
   );
 });
 
-// Get single order for user
+// Get single order for user (with all timestamp fields)
 app.get('/api/orders/:id', authenticateToken, (req, res) => {
   const orderId = req.params.id;
   const userId = req.user.userId;
@@ -930,10 +932,13 @@ app.get('/api/orders/:id', authenticateToken, (req, res) => {
       o.total_amount as total,
       o.status,
       o.created_at,
+      o.paid_at,
+      o.shipped_at,
+      o.completed_at,
+      o.cancelled_at,
       o.shipping_address,
       o.payment_method,
-      o.transaction_id,
-      o.paid_at
+      o.transaction_id
     FROM Orders o
     WHERE o.order_id = ? AND o.user_id = ?`,
     [orderId, userId],
@@ -963,18 +968,15 @@ app.get('/api/orders/:id', authenticateToken, (req, res) => {
             return res.status(500).json({ error: err.message });
           }
           
-          // Calculate subtotal (items total before shipping)
+          // Calculate subtotal
           const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-          
-          // Shipping is free over 500, otherwise 50
           const shipping = subtotal >= 500 ? 0 : 50;
           
           res.json({
             ...order,
             items: items || [],
             subtotal,
-            shipping_cost: shipping,
-            total: order.total // total_amount from database already includes shipping
+            shipping_cost: shipping
           });
         }
       );
@@ -1370,95 +1372,358 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 
 // ==================== SELLER API ====================
 
-// Get seller dashboard data (protected - requires seller role)
-app.get('/api/seller/dashboard', authenticateToken, (req, res) => {
-  // Check if user is seller
-  db.get(
-    'SELECT role FROM Users WHERE user_id = ?',
-    [req.user.userId],
-    (err, user) => {
+// Get seller's albums
+app.get('/api/seller/albums', authenticateToken, requireSeller, (req, res) => {
+  db.all(
+    `SELECT 
+      a.*,
+      COUNT(p.product_id) as product_count
+    FROM Albums a
+    LEFT JOIN Products p ON a.album_id = p.album_id
+    GROUP BY a.album_id
+    ORDER BY a.created_at DESC`,
+    [],
+    (err, rows) => {
       if (err) {
         return res.status(500).json({ error: err.message });
       }
+      res.json(rows);
+    }
+  );
+});
 
-      if (!user || user.role !== 'seller') {
-        return res.status(403).json({ error: 'Access denied. Seller role required.' });
+// Get seller's products
+app.get('/api/seller/products', authenticateToken, requireSeller, (req, res) => {
+  db.all(
+    `SELECT
+      p.*,
+      a.title as album_title,
+      a.cover_image_url as album_cover
+    FROM Products p
+    JOIN Albums a ON p.album_id = a.album_id
+    ORDER BY p.created_at DESC`,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
       }
+      res.json(rows);
+    }
+  );
+});
 
-      // Get seller statistics
-      db.get(
-        `SELECT
-            (SELECT COUNT(*) FROM Products WHERE is_active = 1) as total_products,
-            (SELECT COUNT(DISTINCT album_id) FROM Products WHERE is_active = 1) as total_albums,
-            (SELECT COUNT(*) FROM Orders WHERE status = 'pending') as pending_orders,
-            (SELECT COUNT(*) FROM Orders WHERE status = 'paid') as paid_orders,
-            (SELECT COUNT(*) FROM Orders WHERE status = 'completed') as completed_orders`,
-        [req.user.userId],
-        (err, stats) => {
+// Get seller's product by product_id
+app.get('/api/seller/products/:id', authenticateToken, requireSeller, (req, res) => {
+  const productId = req.params.id;
+
+  db.get(
+    `SELECT
+      p.*,
+      a.title as album_title,
+      a.artist,
+      a.genre,
+      a.release_year,
+      a.tracklist,
+      a.cover_image_url as album_cover
+    FROM Products p
+    JOIN Albums a ON p.album_id = a.album_id
+    WHERE p.product_id = ?`,
+    [productId],
+    (err, product) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      if (!product) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+      res.json(product);
+    }
+  );
+});
+
+// Get seller's orders (with all timestamp fields)
+app.get('/api/seller/orders', authenticateToken, requireSeller, (req, res) => {
+  db.all(
+    `SELECT 
+      o.order_id,
+      o.total_amount,
+      o.status,
+      o.created_at,
+      o.paid_at,
+      o.shipped_at,
+      o.completed_at,
+      o.cancelled_at,
+      o.shipping_address,
+      u.username as customer_name,
+      u.email as customer_email,
+      COUNT(oi.order_item_id) as item_count
+    FROM Orders o
+    JOIN Users u ON o.user_id = u.user_id
+    LEFT JOIN Order_Items oi ON o.order_id = oi.order_id
+    GROUP BY o.order_id
+    ORDER BY o.created_at DESC`,
+    [],
+    (err, rows) => {
+      if (err) {
+        console.error('Error fetching seller orders:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(rows);
+    }
+  );
+});
+
+// Get single order for seller (with all timestamp fields)
+app.get('/api/seller/orders/:id', authenticateToken, requireSeller, (req, res) => {
+  const orderId = req.params.id;
+  
+  db.get(
+    `SELECT 
+      o.order_id as id,
+      o.total_amount as total,
+      o.status,
+      o.created_at,
+      o.paid_at,
+      o.shipped_at,
+      o.completed_at,
+      o.cancelled_at,
+      o.shipping_address,
+      o.payment_method,
+      o.transaction_id,
+      u.username as customer_name,
+      u.email as customer_email
+    FROM Orders o
+    JOIN Users u ON o.user_id = u.user_id
+    WHERE o.order_id = ?`,
+    [orderId],
+    (err, order) => {
+      if (err) {
+        console.error('Error fetching order:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+      
+      db.all(
+        `SELECT 
+          oi.order_item_id as id,
+          oi.quantity,
+          oi.price_at_purchase as price,
+          p.condition,
+          a.title as name,
+          a.cover_image_url as image
+        FROM Order_Items oi
+        JOIN Products p ON oi.product_id = p.product_id
+        JOIN Albums a ON p.album_id = a.album_id
+        WHERE oi.order_id = ?`,
+        [orderId],
+        (err, items) => {
           if (err) {
+            console.error('Error fetching order items:', err);
             return res.status(500).json({ error: err.message });
           }
-
-          // Get recent orders
-          db.all(
-            `SELECT
-                o.order_id,
-                o.total_amount,
-                o.status,
-                o.created_at,
-                o.paid_at,
-                u.username as customer_name,
-                COUNT(oi.order_item_id) as item_count
-            FROM Orders o
-            JOIN Users u ON o.user_id = u.user_id
-            LEFT JOIN Order_Items oi ON o.order_id = oi.order_id
-            WHERE o.user_id = ?
-            GROUP BY o.order_id
-            ORDER BY o.created_at DESC
-            LIMIT 10`,
-            [req.user.userId],
-            (err, recentOrders) => {
-              if (err) {
-                return res.status(500).json({ error: err.message });
-              }
-
-              // Get low stock products
-              db.all(
-                `SELECT
-                    p.product_id,
-                    a.title AS album_title,
-                    a.artist,
-                    a.cover_image_url,
-                    p.condition,
-                    p.price,
-                    p.is_active
-                FROM Products p
-                JOIN Albums a ON p.album_id = a.album_id
-                WHERE p.is_active = 1
-                ORDER BY p.created_at ASC
-                LIMIT 10`,
-                [],
-                (err, lowStock) => {
-                  if (err) {
-                    return res.status(500).json({ error: err.message });
-                  }
-
-                  res.json({
-                    stats: stats || {},
-                    recentOrders: recentOrders || [],
-                    lowStock: lowStock || [],
-                    sellerInfo: {
-                      userId: req.user.userId,
-                      username: user.username,
-                      email: user.email
-                    }
-                  });
-                }
-              );
-            }
-          );
+          
+          // Calculate subtotal
+          const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+          const shipping = subtotal >= 500 ? 0 : 50;
+          
+          res.json({
+            ...order,
+            items: items || [],
+            subtotal,
+            shipping_cost: shipping
+          });
         }
       );
+    }
+  );
+});
+
+// UPDATE ORDER STATUS - This is the missing endpoint
+app.put('/api/seller/orders/:id/status', authenticateToken, requireSeller, (req, res) => {
+  const orderId = req.params.id;
+  const { status } = req.body;
+  
+  // Validate status
+  const validStatuses = ['pending', 'paid', 'shipped', 'completed', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  
+  // Check if order exists
+  db.get('SELECT * FROM Orders WHERE order_id = ?', [orderId], (err, order) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    // Update order status - triggers will automatically set the appropriate timestamp
+    db.run(
+      'UPDATE Orders SET status = ? WHERE order_id = ?',
+      [status, orderId],
+      function(err) {
+        if (err) {
+          console.error('Error updating order status:', err);
+          return res.status(500).json({ error: err.message });
+        }
+        
+        // Fetch the updated order to return all timestamps
+        db.get(
+          `SELECT 
+            order_id,
+            status,
+            paid_at,
+            shipped_at,
+            completed_at,
+            cancelled_at
+          FROM Orders WHERE order_id = ?`,
+          [orderId],
+          (err, updatedOrder) => {
+            if (err) {
+              return res.json({ success: true });
+            }
+            res.json({ 
+              success: true, 
+              message: `Order status updated to ${status}`,
+              order: updatedOrder
+            });
+          }
+        );
+      }
+    );
+  });
+});
+
+// Create new album
+app.post('/api/albums', authenticateToken, requireSeller, (req, res) => {
+  const { title, artist, cover_image, genre, tracklist, release_year } = req.body;
+  
+  db.run(
+    `INSERT INTO Albums (title, artist, cover_image_url, genre, tracklist, release_year, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+    [title, artist, cover_image, genre, tracklist, release_year],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.status(201).json({ 
+        success: true, 
+        album_id: this.lastID,
+        message: 'Album created successfully' 
+      });
+    }
+  );
+});
+
+// Update album
+app.put('/api/albums/:id', authenticateToken, requireSeller, (req, res) => {
+  const albumId = req.params.id;
+  const { title, artist, cover_image, genre, tracklist, release_year } = req.body;
+  
+  db.run(
+    `UPDATE Albums 
+     SET title = ?, artist = ?, cover_image_url = ?, genre = ?, tracklist = ?, release_year = ?
+     WHERE album_id = ?`,
+    [title, artist, cover_image, genre, tracklist, release_year, albumId],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ success: true, message: 'Album updated successfully' });
+    }
+  );
+});
+
+// Create new product
+app.post('/api/products', authenticateToken, requireSeller, (req, res) => {
+  const { album_id, condition, price, description, images } = req.body;
+  
+  db.run(
+    `INSERT INTO Products (album_id, condition, price, description, image_urls, is_active, created_at)
+     VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
+    [album_id, condition, price, description, JSON.stringify(images)],
+    function(err) {
+      if (err) {
+        console.error('Error creating product:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.status(201).json({ 
+        success: true, 
+        product_id: this.lastID,
+        message: 'Product added successfully' 
+      });
+    }
+  );
+});
+
+// Update product
+app.put('/api/products/:id', authenticateToken, requireSeller, (req, res) => {
+  const productId = req.params.id;
+  const { condition, price, description, images } = req.body;
+  
+  db.run(
+    `UPDATE Products 
+     SET condition = ?, price = ?, description = ?, image_urls = ?
+     WHERE product_id = ?`,
+    [condition, price, description, JSON.stringify(images), productId],
+    function(err) {
+      if (err) {
+        console.error('Error updating product:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ success: true, message: 'Product updated successfully' });
+    }
+  );
+});
+
+// Delete product
+app.delete('/api/products/:id', authenticateToken, requireSeller, (req, res) => {
+  const productId = req.params.id;
+  
+  // First, delete from Cart_Items (foreign key constraint)
+  db.run('DELETE FROM Cart_Items WHERE product_id = ?', [productId], (err) => {
+    if (err) {
+      console.error('Error deleting from cart:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    // Then delete from Order_Items
+    db.run('DELETE FROM Order_Items WHERE product_id = ?', [productId], (err) => {
+      if (err) {
+        console.error('Error deleting from order items:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      // Finally delete the product
+      db.run('DELETE FROM Products WHERE product_id = ?', [productId], function(err) {
+        if (err) {
+          console.error('Error deleting product:', err);
+          return res.status(500).json({ error: err.message });
+        }
+        
+        res.json({ success: true, message: 'Product deleted successfully' });
+      });
+    });
+  });
+});
+
+// Toggle product active status
+app.put('/api/products/:id/toggle', authenticateToken, requireSeller, (req, res) => {
+  const productId = req.params.id;
+  
+  db.run(
+    `UPDATE Products SET is_active = NOT is_active WHERE product_id = ?`,
+    [productId],
+    function(err) {
+      if (err) {
+        console.error('Error toggling product:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ success: true });
     }
   );
 });
