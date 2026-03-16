@@ -145,3 +145,28 @@ export function getOrderDetailForCurrentUser(orderId) {
   return { order, items }
 }
 
+export function getPurchaseRecordsForCurrentUser() {
+  const user = getCurrentUser()
+  if (!user?.id) return []
+  const db = readDb()
+
+  const myOrders = db.orders
+    .filter((o) => o.user_id === user.id)
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+
+  const orderMap = new Map(myOrders.map((o) => [o.order_id, o]))
+
+  return db.orderItems
+    .filter((it) => orderMap.has(it.order_id))
+    .map((it) => {
+      const order = orderMap.get(it.order_id)
+      return {
+        order_id: it.order_id,
+        purchased_at: order?.created_at,
+        product_id: it.product_id,
+        condition: it.condition,
+        price_at_purchase: it.price_at_purchase
+      }
+    })
+}
+
