@@ -15,7 +15,6 @@ CREATE TABLE Users (
 
 -- Table: Albums (Parent Table - SPU)
 -- Description: Stores static, general information about music albums
-
 CREATE TABLE Albums (
     album_id INTEGER PRIMARY KEY AUTOINCREMENT,
     title VARCHAR(100) NOT NULL,
@@ -25,33 +24,30 @@ CREATE TABLE Albums (
     tracklist TEXT,
     release_year INTEGER,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CHECK (release_year >= 1800 AND release_year <= 3000)  -- Fixed this line
+    CHECK (release_year >= 1800 AND release_year <= 3000)
 );
 
 -- Table: Products (Child Table - SKU)
 -- Description: Stores specific inventory items with condition and price
-
 CREATE TABLE Products (
     product_id INTEGER PRIMARY KEY AUTOINCREMENT,
     album_id INTEGER NOT NULL,
     condition VARCHAR(50) NOT NULL,
     price DECIMAL(10, 2) NOT NULL CHECK (price >= 0),
     description TEXT,
-    image_urls JSON,  -- Stores array of image URLs as JSON
+    image_urls JSON,
     is_active BOOLEAN NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (album_id) REFERENCES Albums(album_id) ON DELETE RESTRICT,
     CHECK (condition IN ('Mint', 'Near Mint', 'Good'))
 );
 
--- Create index for faster product lookups by album
+-- Create indexes for faster product lookups by album
 CREATE INDEX idx_products_album ON Products(album_id);
 CREATE INDEX idx_products_active ON Products(is_active);
 
 -- Table: Cart_Items
 -- Description: Temporary storage for items in shopping cart
--- Note: Many-to-Many relationship between Users and Products
-
 CREATE TABLE Cart_Items (
     cart_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -60,14 +56,14 @@ CREATE TABLE Cart_Items (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE,
-    UNIQUE(user_id, product_id)  -- One cart entry per user-product combination
+    UNIQUE(user_id, product_id)
 );
 
 -- Create indexes for cart queries
 CREATE INDEX idx_cart_user ON Cart_Items(user_id);
 CREATE INDEX idx_cart_product ON Cart_Items(product_id);
 
--- Table: Orders (Order Header)
+-- Table: Orders (Order Header) - UPDATED with new timestamp columns
 -- Description: Represents the transaction receipt
 CREATE TABLE Orders (
     order_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,6 +74,9 @@ CREATE TABLE Orders (
     payment_method VARCHAR(50),
     transaction_id VARCHAR(100),
     paid_at DATETIME,
+    shipped_at DATETIME,
+    completed_at DATETIME,
+    cancelled_at DATETIME,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE RESTRICT,
     CHECK (status IN ('pending', 'paid', 'shipped', 'completed', 'cancelled'))
@@ -90,8 +89,6 @@ CREATE INDEX idx_orders_created ON Orders(created_at);
 
 -- Table: Order_Items (Order Details)
 -- Description: Links Orders to specific Products with historical price
--- Note: One Order_Item references exactly one Product (1:1 relationship at line item level)
--- A Product can appear in multiple Order_Items across different orders
 CREATE TABLE Order_Items (
     order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
     order_id INTEGER NOT NULL,
@@ -161,7 +158,7 @@ CREATE TABLE Reviews (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE,
-    UNIQUE(user_id, product_id)  -- One review per user per product
+    UNIQUE(user_id, product_id)
 );
 
 -- Create indexes for reviews
@@ -171,7 +168,6 @@ CREATE INDEX idx_reviews_rating ON Reviews(rating);
 
 -- Table: Discussion_Bubbles
 -- Description: Forum/Message board for floating bubbles on frontend
--- Note: One-to-Many relationship with Users (one user can have many messages)
 CREATE TABLE Discussion_Bubbles (
     bubble_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -208,6 +204,10 @@ SELECT
     o.order_id,
     o.total_amount,
     o.status,
+    o.paid_at,
+    o.shipped_at,
+    o.completed_at,
+    o.cancelled_at,
     o.created_at,
     u.user_id,
     u.username,
@@ -291,12 +291,40 @@ BEGIN
     WHERE order_id = OLD.order_id;
 END;
 
--- Trigger: Validate paid_at timestamp when status changes to 'paid'
+-- UPDATED Trigger: Set paid_at when status changes to 'paid'
+DROP TRIGGER IF EXISTS validate_order_paid;
 CREATE TRIGGER validate_order_paid
 BEFORE UPDATE OF status ON Orders
 WHEN NEW.status = 'paid' AND OLD.status != 'paid'
 BEGIN
     UPDATE Orders SET paid_at = CURRENT_TIMESTAMP
+    WHERE order_id = NEW.order_id;
+END;
+
+-- NEW Trigger: Set shipped_at when status changes to 'shipped'
+CREATE TRIGGER validate_order_shipped
+BEFORE UPDATE OF status ON Orders
+WHEN NEW.status = 'shipped' AND OLD.status != 'shipped'
+BEGIN
+    UPDATE Orders SET shipped_at = CURRENT_TIMESTAMP
+    WHERE order_id = NEW.order_id;
+END;
+
+-- NEW Trigger: Set completed_at when status changes to 'completed'
+CREATE TRIGGER validate_order_completed
+BEFORE UPDATE OF status ON Orders
+WHEN NEW.status = 'completed' AND OLD.status != 'completed'
+BEGIN
+    UPDATE Orders SET completed_at = CURRENT_TIMESTAMP
+    WHERE order_id = NEW.order_id;
+END;
+
+-- NEW Trigger: Set cancelled_at when status changes to 'cancelled'
+CREATE TRIGGER validate_order_cancelled
+BEFORE UPDATE OF status ON Orders
+WHEN NEW.status = 'cancelled' AND OLD.status != 'cancelled'
+BEGIN
+    UPDATE Orders SET cancelled_at = CURRENT_TIMESTAMP
     WHERE order_id = NEW.order_id;
 END;
 
@@ -319,12 +347,10 @@ BEGIN
     END;
 END;
 
--- Trigger: Clean up cart after order placement (optional)
+-- Trigger: Clean up cart after order placement
 CREATE TRIGGER cleanup_cart_after_order
 AFTER INSERT ON Orders
 BEGIN
     DELETE FROM Cart_Items
     WHERE user_id = NEW.user_id;
 END;
-
-

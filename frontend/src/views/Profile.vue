@@ -54,22 +54,22 @@
           </div>
 
           <!-- 收货地址 -->
-          <div class="address-section">
+          <div v-if="!isSeller" class="address-section">
             <div class="section-header">
-              <h3>收货地址</h3>
-              <button @click="showAddressModal = true" class="btn-add">+ 添加地址</button>
+              <h3>{{ $t('profile.address.title') }}</h3>
+              <button @click="showAddressModal = true" class="btn-add">+ {{ $t('profile.address.add') }}</button>
             </div>
 
-            <div v-if="isLoadingAddresses" class="loading">加载中...</div>
+            <div v-if="isLoadingAddresses" class="loading">{{ $t('profile.address.loading') }}</div>
 
-            <div v-else-if="addresses.length === 0" class="empty-address">暂无收货地址</div>
+            <div v-else-if="addresses.length === 0" class="empty-address">{{ $t('profile.address.empty') }}</div>
 
             <div v-else class="address-list">
               <div v-for="address in addresses" :key="address.address_id" class="address-item">
                 <div class="address-info">
                   <div class="address-header">
                     <span class="recipient-name">{{ address.recipient_name }}</span>
-                    <span v-if="address.is_default === 1" class="default-badge">默认</span>
+                    <span v-if="address.is_default === 1" class="default-badge">{{ $t('profile.address.default') }}</span>
                   </div>
                   <div class="address-details">
                     <p class="phone">{{ address.phone }}</p>
@@ -79,8 +79,8 @@
                   </div>
                 </div>
                 <div class="address-actions">
-                  <button @click="editAddress(address)" class="btn-edit">编辑</button>
-                  <button @click="deleteAddress(address.address_id)" class="btn-delete">删除</button>
+                  <button @click="editAddress(address)" class="btn-edit">{{ $t('profile.address.edit') }}</button>
+                  <button @click="deleteAddress(address.address_id)" class="btn-delete">{{ $t('profile.address.delete') }}</button>
                 </div>
               </div>
             </div>
@@ -130,7 +130,6 @@
             <h3>{{ $t('profile.sellerActions') }}</h3>
 
             <div class="actions-grid">
-
               <router-link to="/seller" class="action-card">
                 <div class="action-icon">📊</div>
                 <div class="action-text">
@@ -169,62 +168,62 @@
     <!-- 地址模态框 -->
     <div v-if="showAddressModal" class="modal-overlay">
       <div class="modal-content">
-        <h3>{{ editingAddress ? '编辑地址' : '添加地址' }}</h3>
+        <h3>{{ editingAddress ? $t('profile.address.modal.edit') : $t('profile.address.modal.add') }}</h3>
         <form @submit.prevent="saveAddress" class="address-form">
           <div class="form-group">
-            <label>收件人姓名 *</label>
+            <label>{{ $t('profile.address.modal.recipientName') }}</label>
             <input v-model="addressForm.recipient_name" type="text" required />
           </div>
           <div class="form-group">
-            <label>联系电话 *</label>
+            <label>{{ $t('profile.address.modal.phone') }}</label>
             <input v-model="addressForm.phone" type="tel" required />
           </div>
           <div class="form-group">
-            <label>详细地址 *</label>
+            <label>{{ $t('profile.address.modal.addressLine1') }}</label>
             <input v-model="addressForm.address_line1" type="text" required />
           </div>
           <div class="form-group">
-            <label>地址补充信息</label>
+            <label>{{ $t('profile.address.modal.addressLine2') }}</label>
             <input v-model="addressForm.address_line2" type="text" />
           </div>
           <div class="form-group">
-            <label>城市 *</label>
+            <label>{{ $t('profile.address.modal.city') }}</label>
             <input v-model="addressForm.city" type="text" required />
           </div>
           <div class="form-group">
-            <label>省份/州</label>
+            <label>{{ $t('profile.address.modal.state') }}</label>
             <input v-model="addressForm.state" type="text" />
           </div>
           <div class="form-group">
-            <label>邮政编码 *</label>
+            <label>{{ $t('profile.address.modal.postalCode') }}</label>
             <input v-model="addressForm.postal_code" type="text" required />
           </div>
           <div class="form-group">
-            <label>国家 *</label>
+            <label>{{ $t('profile.address.modal.country') }}</label>
             <select v-model="addressForm.country" required>
-              <option value="中国">中国</option>
-              <option value="美国">美国</option>
-              <option value="英国">英国</option>
-              <option value="加拿大">加拿大</option>
-              <option value="澳大利亚">澳大利亚</option>
-              <option value="日本">日本</option>
-              <option value="德国">德国</option>
-              <option value="法国">法国</option>
-              <option value="韩国">韩国</option>
-              <option value="新加坡">新加坡</option>
-              <option value="其他">其他</option>
+              <option value="中国">{{ $t('countries.china') }}</option>
+              <option value="美国">{{ $t('countries.usa') }}</option>
+              <option value="英国">{{ $t('countries.uk') }}</option>
+              <option value="加拿大">{{ $t('countries.canada') }}</option>
+              <option value="澳大利亚">{{ $t('countries.australia') }}</option>
+              <option value="日本">{{ $t('countries.japan') }}</option>
+              <option value="德国">{{ $t('countries.germany') }}</option>
+              <option value="法国">{{ $t('countries.france') }}</option>
+              <option value="韩国">{{ $t('countries.korea') }}</option>
+              <option value="新加坡">{{ $t('countries.singapore') }}</option>
+              <option value="其他">{{ $t('countries.other') }}</option>
             </select>
           </div>
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
               <input v-model="addressForm.is_default" type="checkbox" />
-              <span>设为默认地址</span>
+              <span>{{ $t('profile.address.modal.setAsDefault') }}</span>
             </label>
           </div>
           <div class="form-actions">
-            <button type="button" @click="showAddressModal = false" class="btn-cancel">取消</button>
+            <button type="button" @click="showAddressModal = false" class="btn-cancel">{{ $t('profile.address.modal.cancel') }}</button>
             <button type="submit" class="btn-save" :disabled="isSaving">
-              {{ isSaving ? '保存中...' : '保存' }}
+              {{ isSaving ? $t('profile.address.modal.saving') : $t('profile.address.modal.save') }}
             </button>
           </div>
         </form>
@@ -396,7 +395,7 @@ const saveAddress = async () => {
   if (!addressForm.value.recipient_name || !addressForm.value.phone ||
       !addressForm.value.address_line1 || !addressForm.value.city ||
       !addressForm.value.postal_code || !addressForm.value.country) {
-    alert('请填写所有必填项')
+    alert(t('profile.address.messages.validation'))
     return
   }
 
@@ -430,13 +429,13 @@ const saveAddress = async () => {
       throw new Error('Failed to save address')
     }
 
-    alert(isEditing ? '地址已更新' : '地址已添加')
+    alert(isEditing ? t('profile.address.messages.updated') : t('profile.address.messages.saved'))
     showAddressModal.value = false
     resetAddressForm()
     loadAddresses()
   } catch (error) {
     console.error('Save address error:', error)
-    alert('保存地址失败')
+    alert(t('profile.address.messages.saveFailed'))
   } finally {
     isSaving.value = false
   }
@@ -444,7 +443,7 @@ const saveAddress = async () => {
 
 // 删除地址
 const deleteAddress = async (addressId) => {
-  if (!confirm('确定要删除这个地址吗？')) {
+  if (!confirm(t('profile.address.messages.confirmDelete'))) {
     return
   }
 
@@ -461,11 +460,11 @@ const deleteAddress = async (addressId) => {
       throw new Error('Failed to delete address')
     }
 
-    alert('地址已删除')
+    alert(t('profile.address.messages.deleted'))
     loadAddresses()
   } catch (error) {
     console.error('Delete address error:', error)
-    alert('删除地址失败')
+    alert(t('profile.address.messages.deleteFailed'))
   }
 }
 

@@ -118,9 +118,8 @@ const username = ref('')
 const userRole = ref('') 
 
 const cartCount = ref(0)
-const isSeller = computed(() => {
-  return userRole.value === 'seller' || userRole.value === 'admin'
-})
+const isSeller = ref(false)  // ADD THIS LINE
+
 // 菜单状态
 const showUserMenu = ref(false)
 const showLanguageMenu = ref(false)
@@ -160,12 +159,12 @@ const updateUserState = async () => {
     isLoggedIn.value = true
     username.value = user.name || user.username
     userRole.value = user.role || 'customer'
-    isSeller.value = user.role === 'seller' || user.role === 'admin' 
+    isSeller.value = user.role === 'seller' || user.role === 'admin'  // Now this works with ref
   } else {
     isLoggedIn.value = false
     username.value = ''
     userRole.value = ''
-    isSeller.value = false 
+    isSeller.value = false  // Now this works with ref
   }
 }
 
@@ -205,6 +204,10 @@ const handleLogout = () => {
   if (confirm(t('profile.logoutConfirm'))) {
     localStorage.removeItem('token')
     localStorage.removeItem('currentUser')
+    isLoggedIn.value = false  // Add this line
+    username.value = ''       // Add this line
+    userRole.value = ''       // Add this line
+    isSeller.value = false    // Add this line
     window.dispatchEvent(new Event('userStateChanged'))
     router.push('/login')
   }

@@ -3,6 +3,30 @@
     <div class="container">
       <h1 class="page-title">{{ $t('orders.title') }}</h1>
 
+      <!-- Filter Section -->
+      <div v-if="orders.length > 0" class="filter-section">
+        <div class="filter-group">
+          <label>{{ $t('orders.filter.byStatus') }}</label>
+          <select v-model="statusFilter" class="filter-select">
+            <option value="all">{{ $t('orders.filter.all') }}</option>
+            <option value="pending">{{ $t('orders.filter.pending') }}</option>
+            <option value="paid">{{ $t('orders.filter.paid') }}</option>
+            <option value="shipped">{{ $t('orders.filter.shipped') }}</option>
+            <option value="completed">{{ $t('orders.filter.completed') }}</option>
+            <option value="cancelled">{{ $t('orders.filter.cancelled') }}</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>{{ $t('orders.filter.sortBy') }}</label>
+          <select v-model="sortBy" class="filter-select">
+            <option value="date">{{ $t('orders.filter.date') }}</option>
+            <option value="total">{{ $t('orders.filter.total') }}</option>
+            <option value="status">{{ $t('orders.filter.status') }}</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div v-if="isLoading" class="loading-state">
         <div class="loading-spinner"></div>
@@ -28,8 +52,8 @@
       </div>
 
       <!-- Orders List -->
-      <div v-else class="orders-list">
-        <div v-for="order in orders" :key="order.id" class="order-card">
+      <div v-else-if="filteredOrders.length > 0" class="orders-list">
+        <div v-for="order in filteredOrders" :key="order.id" class="order-card">
           <div class="order-header">
             <div class="order-info">
               <span class="order-number">{{ $t('orders.orderNumber') }}: #{{ order.id }}</span>
@@ -38,6 +62,26 @@
             <span class="order-status" :class="order.status">
               {{ getStatusText(order.status) }}
             </span>
+          </div>
+
+          <!-- Status Timeline -->
+          <div class="status-timeline">
+            <div class="timeline-item" v-if="order.paid_at">
+              <span class="timeline-dot paid"></span>
+              <span class="timeline-text">{{ $t('orders.timeline.paid') }} {{ formatDateTime(order.paid_at) }}</span>
+            </div>
+            <div class="timeline-item" v-if="order.shipped_at">
+              <span class="timeline-dot shipped"></span>
+              <span class="timeline-text">{{ $t('orders.timeline.shipped') }} {{ formatDateTime(order.shipped_at) }}</span>
+            </div>
+            <div class="timeline-item" v-if="order.completed_at">
+              <span class="timeline-dot completed"></span>
+              <span class="timeline-text">{{ $t('orders.timeline.completed') }} {{ formatDateTime(order.completed_at) }}</span>
+            </div>
+            <div class="timeline-item" v-if="order.cancelled_at">
+              <span class="timeline-dot cancelled"></span>
+              <span class="timeline-text">{{ $t('orders.timeline.cancelled') }} {{ formatDateTime(order.cancelled_at) }}</span>
+            </div>
           </div>
 
           <div class="order-items">
@@ -82,12 +126,22 @@
           </div>
         </div>
       </div>
+
+      <!-- No Filtered Results -->
+      <div v-else class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h2>{{ $t('orders.noFilteredResults') }}</h2>
+        <p>{{ $t('orders.noFilteredResultsDesc') }}</p>
+        <button @click="statusFilter = 'all'; sortBy = 'date'" class="btn-primary">
+          {{ $t('orders.filter.clear') }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { isAuthenticated } from '../services/authService'
@@ -98,6 +152,50 @@ const { t } = useI18n()
 const orders = ref([])
 const isLoading = ref(true)
 const error = ref(null)
+
+// Filter state 
+const statusFilter = ref('all')
+const sortBy = ref('date')
+
+
+// Computed: Filtered and sorted orders - ADD THIS
+const filteredOrders = computed(() => {
+  let filtered = [...orders.value]
+  
+  // Apply status filter
+  if (statusFilter.value !== 'all') {
+    filtered = filtered.filter(order => order.status === statusFilter.value)
+  }
+  
+  // Apply sorting
+  filtered.sort((a, b) => {
+    switch (sortBy.value) {
+      case 'date':
+        return new Date(b.date) - new Date(a.date)
+      case 'total':
+        return calculateTotal(b.items) - calculateTotal(a.items)
+      case 'status':
+        return a.status.localeCompare(b.status)
+      default:
+        return 0
+    }
+  })
+  
+  return filtered
+})
+
+// Enhanced date formatting - ADD THIS
+const formatDateTime = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 // Load orders from API
 const loadOrders = async () => {
@@ -529,6 +627,89 @@ onMounted(() => {
 .total-price {
   color: var(--color-primary);
   font-size: var(--font-size-lg);
+}
+
+/* ADD THESE STYLES */
+
+/* Filter Section */
+.filter-section {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--color-bg);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--color-primary);
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.filter-group label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.filter-select {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-bg-light);
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Status Timeline */
+.status-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-light);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.timeline-dot.paid {
+  background: #27ae60;
+}
+
+.timeline-dot.shipped {
+  background: #3498db;
+}
+
+.timeline-dot.completed {
+  background: #2ecc71;
+}
+
+.timeline-dot.cancelled {
+  background: #e74c3c;
+}
+
+.timeline-text {
+  color: var(--color-text-secondary);
 }
 
 /* Responsive */
