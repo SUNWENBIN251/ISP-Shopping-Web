@@ -11,7 +11,10 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 app.use(cors());
-app.use(express.json());
+// Seller dashboard uploads product images as base64 strings in JSON (can be several MB).
+// Increase body size limit to avoid 413 Payload Too Large.
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Connect to database
 const db = new sqlite3.Database(path.join(__dirname, 'database', 'record_store.db'), (err) => {
