@@ -1,15 +1,11 @@
 // reviewService.js
 import { getCurrentUser } from './authService'
 
-// Fetch reviews for an album from backend API
 export async function getAlbumReviews(albumId) {
   try {
     const response = await fetch(`/api/reviews/album/${albumId}`)
-    
     if (response.ok) {
-      const reviews = await response.json()
-      // merchant_reply is already parsed by the backend, no need to parse again
-      return reviews
+      return await response.json()
     }
     return []
   } catch (error) {
@@ -18,19 +14,29 @@ export async function getAlbumReviews(albumId) {
   }
 }
 
-// Check if user has reviewed a product
-export async function hasUserReviewedProduct(productId) {
+export async function getAlbumAverageRating(albumId) {
+  try {
+    const response = await fetch(`/api/reviews/album/${albumId}/average`)
+    if (response.ok) {
+      return await response.json()
+    }
+    return { avg_rating: 0, review_count: 0 }
+  } catch (error) {
+    console.error('Failed to fetch average rating:', error)
+    return { avg_rating: 0, review_count: 0 }
+  }
+}
+
+// Check if user has reviewed THIS SPECIFIC ORDER
+export async function hasUserReviewedOrder(orderId) {
   const user = getCurrentUser()
   if (!user?.id) return false
   
   try {
     const token = localStorage.getItem('token')
-    const response = await fetch(`/api/reviews/user/product/${productId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+    const response = await fetch(`/api/reviews/user/order/${orderId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
     })
-    
     if (response.ok) {
       const data = await response.json()
       return data.hasReviewed
@@ -42,10 +48,9 @@ export async function hasUserReviewedProduct(productId) {
   }
 }
 
-// Submit a new review
-export async function addAlbumReview(payload) {
+export async function submitReview(productId, orderId, rating, comment) {
   const user = getCurrentUser()
-  if (!user?.id) return { success: false, message: 'profile.notLoggedIn' }
+  if (!user?.id) return { success: false, message: 'Please login first' }
 
   try {
     const token = localStorage.getItem('token')
@@ -56,21 +61,21 @@ export async function addAlbumReview(payload) {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        product_id: payload.product_id,
-        rating: payload.rating,
-        comment: payload.comment
+        product_id: productId,
+        order_id: orderId,
+        rating: rating,
+        comment: comment
       })
     })
     
     const data = await response.json()
-    
     if (response.ok) {
-      return { success: true, review: data.review }
+      return { success: true, message: data.message }
     } else {
-      return { success: false, message: data.error || 'review.submitFailed' }
+      return { success: false, message: data.error || 'Submission failed' }
     }
   } catch (error) {
     console.error('Failed to submit review:', error)
-    return { success: false, message: 'review.submitFailed' }
+    return { success: false, message: 'Network error' }
   }
 }

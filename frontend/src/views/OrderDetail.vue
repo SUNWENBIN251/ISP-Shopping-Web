@@ -130,6 +130,70 @@
           </div>
         </div>
 
+        <!-- Write Review Section - Updated -->
+        <div class="write-review-section" v-if="!isSellerView && order.status === 'completed' && !hasReviewed">
+          <h3>写评价</h3>
+          <div class="review-form">
+            <!-- Show product info directly (no dropdown) -->
+            <div class="product-info-box" v-if="order.items && order.items.length === 1">
+              <div class="product-image-small">
+                <img :src="order.items[0].image" :alt="order.items[0].name">
+              </div>
+              <div class="product-details">
+                <p class="product-name">{{ order.items[0].name }}</p>
+                <p class="product-condition">版本: {{ order.items[0].condition }}</p>
+              </div>
+            </div>
+            
+            <!-- If multiple products in one order, show them all (rare) -->
+            <div v-if="order.items && order.items.length > 1" class="multiple-products">
+              <p>此订单包含 {{ order.items.length }} 件商品，请分别为每个商品评价：</p>
+              <div v-for="item in order.items" :key="item.id" class="product-review-item">
+                <div class="product-info-simple">
+                  <span>{{ item.name }} - {{ item.condition }}</span>
+                </div>
+                <div class="product-review-fields">
+                  <div class="star-rating">
+                    <button v-for="i in 5" :key="i" class="star-btn" :class="{ active: i <= ratings[item.id] }" @click="ratings[item.id] = i">★</button>
+                  </div>
+                  <textarea v-model="comments[item.id]" rows="2" placeholder="评价内容..." class="form-control small"></textarea>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Single product review form -->
+            <div v-if="order.items && order.items.length === 1" class="single-product-review">
+              <div class="form-group">
+                <label>评分</label>
+                <div class="star-rating">
+                  <button v-for="i in 5" :key="i" class="star-btn" :class="{ active: i <= rating }" @click="rating = i">★</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>评价内容</label>
+                <textarea v-model="comment" rows="4" placeholder="分享你的使用感受..." class="form-control"></textarea>
+              </div>
+              <button class="btn-submit-review" :disabled="submitting" @click="submitReviewForOrder">提交评价</button>
+            </div>
+            
+            <!-- Submit all reviews for multiple products -->
+            <div v-if="order.items && order.items.length > 1" class="multiple-review-actions">
+              <button class="btn-submit-review" :disabled="submitting" @click="submitMultipleReviews">提交所有评价</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="!isSellerView && order.status === 'completed' && hasReviewed" class="already-reviewed">
+          <p>✅ 你已经评价过这个订单了，感谢你的分享！</p>
+          <button class="btn-view-reviews" @click="goToAlbumReviewPage" v-if="order.items && order.items.length">查看评价</button>
+        </div>
+
+        <!-- After submitting successfully, show success message with button -->
+        <div v-if="reviewSubmitted && !hasReviewed && order.status === 'completed'" class="review-success">
+          <p>✅ 评价提交成功！感谢你的分享！</p>
+          <button class="btn-view-reviews" @click="goToAlbumReviewPage">查看我的评价</button>
+        </div>
+
         <!-- Action Buttons -->
         <div class="action-buttons" v-if="!isSellerView">
           <button 
@@ -169,6 +233,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { isAuthenticated } from '../services/authService'
+import { hasUserReviewedOrder, submitReview } from '../services/reviewService'
 
 const route = useRoute()
 const router = useRouter()
@@ -179,8 +244,18 @@ const isLoading = ref(true)
 const error = ref(null)
 const isSellerView = ref(false)
 
+// Review state
+const selectedProductId = ref(null)
+const rating = ref(0)
+const comment = ref('')
+const submitting = ref(false)
+const hasReviewed = ref(false)
+const reviewSubmitted = ref(false)
 
-// ADD THIS method
+// For multiple products in one order
+const ratings = ref({})
+const comments = ref({})
+
 const formatDateTime = (dateString) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
@@ -201,9 +276,8 @@ const loadOrder = async () => {
   try {
     const orderId = route.params.id
     const token = localStorage.getItem('token')
-    const isSeller = route.query.seller === 'true'  // Renamed to isSeller
+    const isSeller = route.query.seller === 'true'
     
-    // Use different endpoints for seller vs user
     const endpoint = isSeller 
       ? `/api/seller/orders/${orderId}` 
       : `/api/orders/${orderId}`
@@ -219,15 +293,24 @@ const loadOrder = async () => {
     }
     
     order.value = await response.json()
+    isSellerView.value = isSeller
     
-    // Store whether this is seller view - use different variable name
-    isSellerView.value = isSeller  // Fixed: using different names
+    await checkReviewStatus()
     
   } catch (err) {
     console.error('Failed to load order:', err)
     error.value = t('common.loadError')
   } finally {
     isLoading.value = false
+  }
+}
+
+// Check if already reviewed
+const checkReviewStatus = async () => {
+  if (order.value && order.value.status === 'completed') {
+    const result = await hasUserReviewedOrder(order.value.id)
+    hasReviewed.value = result
+    reviewSubmitted.value = false
   }
 }
 
@@ -256,7 +339,139 @@ const getStatusText = (status) => {
   return statusMap[status] || status
 }
 
-// Pay order - always succeeds
+// In goToAlbumReviewPage, add console.log
+const goToAlbumReviewPage = () => {
+  if (order.value.items && order.value.items.length > 0) {
+    const product = order.value.items[0]
+    console.log('Product from order:', product) // Check if album_id exists
+    
+    if (product.album_id) {
+      router.push(`/album/${product.album_id}/reviews`)
+    } else {
+      fetch(`/api/products/${product.id}`)
+        .then(res => res.json())
+        .then(productData => {
+          console.log('Product data from API:', productData) // Check what comes back
+          if (productData.album_id) {
+            router.push(`/album/${productData.album_id}/reviews`)
+          } else {
+            alert('无法找到对应的专辑')
+          }
+        })
+        .catch(err => {
+          console.error('Failed to get product info:', err)
+          alert('无法跳转到评价页面')
+        })
+    }
+  }
+}
+
+// Submit review for order (one review per order)
+const submitReviewForOrder = async () => {
+  if (!order.value.items || order.value.items.length === 0) {
+    alert('没有可评价的商品')
+    return
+  }
+  
+  // For single product order
+  if (order.value.items.length === 1) {
+    const product = order.value.items[0]
+    console.log('PRODUCT FROM ORDER:', product)
+    console.log('product.id:', product.id)
+    
+    if (rating.value === 0) {
+      alert('请选择评分')
+      return
+    }
+    if (!comment.value.trim()) {
+      alert('请填写评价内容')
+      return
+    }
+    
+    submitting.value = true
+    try {
+      const res = await submitReview(product.id, order.value.id, rating.value, comment.value.trim())
+      if (res.success) {
+        reviewSubmitted.value = true
+        hasReviewed.value = true
+        rating.value = 0
+        comment.value = ''
+        
+        // Redirect to album review page
+        fetch(`/api/products/${product.id}`)
+          .then(res => res.json())
+          .then(productData => {
+            if (productData.album_id) {
+              setTimeout(() => {
+                if (confirm('评价提交成功！是否查看评价页面？')) {
+                  router.push(`/album/${productData.album_id}/reviews`)
+                }
+              }, 500)
+            }
+          })
+      } else {
+        alert(res.message)
+      }
+    } catch (error) {
+      console.error('Failed to submit review:', error)
+      alert('提交失败，请重试')
+    } finally {
+      submitting.value = false
+    }
+  }
+}
+
+// Submit multiple reviews for products in same order
+const submitMultipleReviews = async () => {
+  if (!order.value.items || order.value.items.length === 0) return
+  
+  let hasError = false
+  let submittedCount = 0
+  
+  submitting.value = true
+  
+  for (const item of order.value.items) {
+    const itemRating = ratings.value[item.id] || 0
+    const itemComment = comments.value[item.id] || ''
+    
+    if (itemRating === 0) {
+      alert(`请为 "${item.name} - ${item.condition}" 选择评分`)
+      hasError = true
+      break
+    }
+    if (!itemComment.trim()) {
+      alert(`请为 "${item.name} - ${item.condition}" 填写评价内容`)
+      hasError = true
+      break
+    }
+    
+    try {
+      const res = await submitReview(item.id, order.value.id, itemRating, itemComment.trim())
+      if (res.success) {
+        submittedCount++
+      } else {
+        alert(`评价 "${item.name}" 失败: ${res.message}`)
+        hasError = true
+        break
+      }
+    } catch (error) {
+      alert(`评价 "${item.name}" 失败`)
+      hasError = true
+      break
+    }
+  }
+  
+  if (!hasError && submittedCount > 0) {
+    reviewSubmitted.value = true
+    hasReviewed.value = true
+    ratings.value = {}
+    comments.value = {}
+  }
+  
+  submitting.value = false
+}
+
+// Pay order
 const payOrder = async () => {
   if (!confirm('Proceed to payment?')) return
   
@@ -273,7 +488,7 @@ const payOrder = async () => {
     
     if (response.ok) {
       alert('✅ Payment successful! Your order has been confirmed.')
-      await loadOrder() // Reload order
+      await loadOrder()
     } else {
       alert('❌ ' + (data.error || 'Payment failed'))
     }
@@ -335,7 +550,6 @@ const confirmReceipt = async () => {
   }
 }
 
-// Check authentication
 onMounted(() => {
   if (!isAuthenticated()) {
     router.push('/login')
@@ -641,6 +855,200 @@ onMounted(() => {
   font-size: var(--font-size-xl);
 }
 
+/* Write Review Section */
+.write-review-section {
+  background: var(--color-bg-light);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xl);
+  margin-top: var(--spacing-xl);
+}
+
+.write-review-section h3 {
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-primary);
+  font-size: var(--font-size-lg);
+}
+
+/* Product Info Box */
+.product-info-box {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+}
+
+.product-image-small {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+}
+
+.product-image-small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-details {
+  flex: 1;
+}
+
+.product-name {
+  font-weight: bold;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.product-condition {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Multiple Products */
+.multiple-products {
+  margin-bottom: var(--spacing-lg);
+}
+
+.product-review-item {
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--color-border);
+}
+
+.product-info-simple {
+  font-weight: bold;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-primary);
+}
+
+.product-review-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-weight: bold;
+  color: var(--color-text-primary);
+}
+
+.form-control {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
+  background: white;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.form-control.small {
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.star-rating {
+  display: flex;
+  gap: 8px;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #d1d5db;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.star-btn.active {
+  color: #f59e0b;
+}
+
+.star-btn:hover {
+  color: #f59e0b;
+}
+
+.btn-submit-review {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: bold;
+  margin-top: var(--spacing-lg);
+  transition: background-color 0.2s;
+}
+
+.btn-submit-review:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btn-submit-review:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.multiple-review-actions {
+  margin-top: var(--spacing-lg);
+}
+
+/* Already Reviewed */
+.already-reviewed {
+  background: #d4edda;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-xl);
+  text-align: center;
+  color: #155724;
+}
+
+/* Review Success */
+.review-success {
+  background: #d4edda;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-xl);
+  text-align: center;
+  color: #155724;
+}
+
+.btn-view-reviews {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: background-color 0.2s;
+}
+
+.btn-view-reviews:hover {
+  background: var(--color-primary-dark);
+}
+
 /* Action Buttons */
 .action-buttons {
   display: flex;
@@ -699,8 +1107,6 @@ onMounted(() => {
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-primary-light);
 }
-
-/* ADD THESE STYLES */
 
 /* Timeline Card */
 .timeline-card {
@@ -819,6 +1225,12 @@ onMounted(() => {
   .shipping-details strong {
     min-width: auto;
     margin-bottom: var(--spacing-xs);
+  }
+  
+  .product-info-box {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
 }
 </style>
