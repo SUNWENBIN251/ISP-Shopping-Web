@@ -38,7 +38,7 @@
             
             <div class="album-actions">
               <router-link :to="`/album/${albumId}/reviews`" class="view-reviews-btn">
-                {{ $t('albumDetail.viewAllReviews') || '查看全部评价' }} ({{ reviewCount }})
+                {{ $t('albumDetail.viewAllReviews') }} ({{ reviewCount }})
               </router-link>
             </div>
           </div>
@@ -64,7 +64,7 @@
             class="condition-group"
           >
             <div class="condition-header">
-              <h3 class="condition-title">{{ condition }}</h3>
+              <h3 class="condition-title">{{ $t(`albumDetail.conditions.${condition.toLowerCase().replace(' ', '')}`) || condition }}</h3>
               <span class="condition-count">{{ getProductsByCondition(condition).length }} {{ $t('albumDetail.conditions.copies') }}</span>
             </div>
 
@@ -87,9 +87,9 @@
                   />
                 </div>
                 <div class="product-info">
-                  <p class="product-condition">{{ product.condition }}</p>
+                  <p class="product-condition">{{ $t(`albumDetail.conditions.${product.condition.toLowerCase().replace(' ', '')}`) || product.condition }}</p>
                   <p class="product-price">¥{{ product.price.toFixed(2) }}</p>
-                  <p class="product-description">{{ product.description || 'No description' }}</p>
+                  <p class="product-description">{{ product.description || $t('productDetail.noDescription') || 'No description' }}</p>
                 </div>
               </div>
             </div>

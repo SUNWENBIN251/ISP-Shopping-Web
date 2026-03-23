@@ -335,6 +335,7 @@
     "availableCopies": "可用唱片",
     "noProducts": "該專輯暫無唱片",
     "noItemsInCondition": "該成色下暫無唱片",
+    "viewAllReviews": "查看全部評價",
     "reviews": {
       "title": "寶貝評價",
       "summary": {
@@ -360,10 +361,19 @@
     },
     "conditions": {
       "mint": "完美品",
-      "nearMint": "近完美品",
+      "nearmint": "近完美品",
       "good": "良好",
       "copies": "件"
     }
+  },
+  
+  "review": {
+    "title": "商品評價",
+    "back": "返回",
+    "reviews": "條評價",
+    "noReviews": "暫無評價，快去購買後留下你的評價吧！",
+    "version": "版本",
+    "rating": "評分"
   },
   "category": {
     "albums": "張專輯",

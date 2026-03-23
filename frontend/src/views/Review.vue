@@ -2,7 +2,7 @@
   <div class="review-page">
     <div class="container">
       <div class="page-header">
-        <button class="back-btn" @click="$router.back()">← 返回</button>
+        <button class="back-btn" @click="$router.back()">← {{ $t('review.back') }}</button>
         <h1>{{ albumTitle }}</h1>
         <p>{{ albumArtist }}</p>
       </div>
@@ -13,13 +13,13 @@
         <div class="stars">
           <span v-for="i in 5" :key="i" class="star" :class="{ active: i <= Math.round(avgRating) }">★</span>
         </div>
-        <div class="count">{{ reviews.length }} 条评价</div>
+        <div class="count">{{ reviews.length }} {{ $t('review.reviews') }}</div>
       </div>
 
       <!-- Reviews List -->
       <div class="reviews-list">
         <div v-if="reviews.length === 0" class="no-reviews">
-          <p>暂无评价，快去购买后留下你的评价吧！</p>
+          <p>{{ $t('review.noReviews') }}</p>
         </div>
 
         <div v-else class="review-card" v-for="review in reviews" :key="review.review_id">
@@ -36,7 +36,7 @@
             </div>
           </div>
           <div class="product-badge" v-if="review.sku_condition">
-            版本: {{ review.sku_condition }}
+            {{ $t('review.version') }}: {{ $t(`albumDetail.conditions.${review.sku_condition.toLowerCase().replace(' ', '')}`) || review.sku_condition }}
           </div>
           <div class="review-comment">{{ review.comment }}</div>
         </div>
@@ -48,11 +48,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getAlbumWithProducts } from '../services/albumService'
 import { getAlbumReviews, getAlbumAverageRating } from '../services/reviewService'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const albumId = ref(null)
 const albumTitle = ref('')
@@ -61,7 +63,15 @@ const reviews = ref([])
 const avgRating = ref(0)
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('zh-CN')
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const loadData = async () => {

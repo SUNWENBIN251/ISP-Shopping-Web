@@ -332,6 +332,7 @@
     "availableCopies": "Available Copies",
     "noProducts": "No copies available for this album",
     "noItemsInCondition": "No copies in this condition",
+    "viewAllReviews": "View All Reviews",
     "reviews": {
       "title": "Customer Reviews",
       "summary": {
@@ -357,10 +358,19 @@
     },
     "conditions": {
       "mint": "Mint",
-      "nearMint": "Near Mint",
+      "nearmint": "Near Mint",
       "good": "Good",
       "copies": "copies"
     }
+  },
+  
+  "review": {
+    "title": "Reviews",
+    "back": "Back",
+    "reviews": "reviews",
+    "noReviews": "No reviews yet. Purchase and leave your review!",
+    "version": "Version",
+    "rating": "Rating"
   },
   "category": {
     "albums": "albums",
