@@ -366,13 +366,24 @@
   },
   
   "review": {
-    "title": "Reviews",
-    "back": "Back",
-    "reviews": "reviews",
-    "noReviews": "No reviews yet. Purchase and leave your review!",
-    "version": "Version",
-    "rating": "Rating"
-  },
+  "title": "Reviews",
+  "back": "Back",
+  "reviews": "reviews",
+  "noReviews": "No reviews yet. Purchase and leave your review!",
+  "version": "Version",
+  "rating": "Rating",
+  "reply": "Reply",
+  "replyToThread": "Reply to thread",
+  "replyPlaceholder": "Write your reply...",
+  "submitReply": "Submit Reply",
+  "submitting": "Submitting...",
+  "cancel": "Cancel",
+  "loginToReply": "Please login to reply",
+  "replyRequired": "Please enter your reply",
+  "replyTooLong": "Reply cannot exceed 500 characters",
+  "replySuccess": "Reply submitted successfully!",
+  "replyFailed": "Failed to submit reply. Please try again."
+},
   "category": {
     "albums": "albums",
     "title": "Categories",

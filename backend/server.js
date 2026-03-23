@@ -1220,7 +1220,7 @@ app.post('/api/orders/:id/pay', authenticateToken, (req, res) => {
 
 // ==================== REVIEWS API ====================
 
-// Get reviews for a specific album
+// Get reviews for album with replies
 app.get('/api/reviews/album/:albumId', (req, res) => {
   const albumId = req.params.albumId;
   
@@ -1230,7 +1230,10 @@ app.get('/api/reviews/album/:albumId', (req, res) => {
       r.rating,
       r.comment,
       r.created_at,
+      u.user_id,
       u.username,
+      u.avatar_url,
+      u.role,
       p.product_id,
       p.condition as sku_condition
     FROM Reviews r
@@ -1244,9 +1247,165 @@ app.get('/api/reviews/album/:albumId', (req, res) => {
         console.error('Error fetching reviews:', err);
         return res.status(500).json({ error: err.message });
       }
-      res.json(reviews || []);
+      
+      if (reviews.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all replies for these reviews
+      const reviewIds = reviews.map(r => r.review_id);
+      const placeholders = reviewIds.map(() => '?').join(',');
+      
+      db.all(
+        `SELECT 
+          rr.reply_id,
+          rr.review_id,
+          rr.content,
+          rr.created_at,
+          rr.parent_reply_id,
+          u.user_id,
+          u.username,
+          u.avatar_url,
+          u.role
+        FROM Review_Replies rr
+        JOIN Users u ON rr.user_id = u.user_id
+        WHERE rr.review_id IN (${placeholders})
+        ORDER BY rr.created_at ASC`,
+        reviewIds,
+        (err, replies) => {
+          if (err) {
+            console.error('Error fetching replies:', err);
+            return res.status(500).json({ error: err.message });
+          }
+          
+          // Group replies by review_id
+          const repliesByReview = {};
+          replies.forEach(reply => {
+            if (!repliesByReview[reply.review_id]) {
+              repliesByReview[reply.review_id] = [];
+            }
+            repliesByReview[reply.review_id].push(reply);
+          });
+          
+          // Organize into nested structure
+          const nestedRepliesByReview = {};
+          Object.keys(repliesByReview).forEach(reviewId => {
+            const replyMap = new Map();
+            const nestedReplies = [];
+            
+            repliesByReview[reviewId].forEach(reply => {
+              reply.replies = [];
+              replyMap.set(reply.reply_id, reply);
+              
+              if (reply.parent_reply_id === null) {
+                nestedReplies.push(reply);
+              } else {
+                const parent = replyMap.get(reply.parent_reply_id);
+                if (parent) {
+                  parent.replies.push(reply);
+                }
+              }
+            });
+            
+            nestedRepliesByReview[reviewId] = nestedReplies;
+          });
+          
+          // Add replies to reviews
+          const reviewsWithReplies = reviews.map(review => ({
+            ...review,
+            replies: nestedRepliesByReview[review.review_id] || []
+          }));
+          
+          res.json(reviewsWithReplies);
+        }
+      );
     }
   );
+});
+
+// Add reply to a review (no edit/delete)
+app.post('/api/reviews/:reviewId/reply', authenticateToken, (req, res) => {
+  const reviewId = req.params.reviewId;
+  const { content, parent_reply_id } = req.body;
+  const userId = req.user.userId;
+  
+  if (!content || content.trim().length === 0) {
+    return res.status(400).json({ error: 'Reply content cannot be empty' });
+  }
+  
+  if (content.length > 500) {
+    return res.status(400).json({ error: 'Reply must be less than 500 characters' });
+  }
+  
+  // Check if review exists
+  db.get('SELECT review_id FROM Reviews WHERE review_id = ?', [reviewId], (err, review) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    
+    // If parent_reply_id is provided, check if it exists
+    if (parent_reply_id) {
+      db.get(
+        'SELECT reply_id FROM Review_Replies WHERE reply_id = ? AND review_id = ?',
+        [parent_reply_id, reviewId],
+        (err, parentReply) => {
+          if (err) {
+            return res.status(500).json({ error: err.message });
+          }
+          if (!parentReply) {
+            return res.status(404).json({ error: 'Parent reply not found' });
+          }
+          insertReply();
+        }
+      );
+    } else {
+      insertReply();
+    }
+    
+    function insertReply() {
+      db.run(
+        `INSERT INTO Review_Replies (review_id, user_id, parent_reply_id, content, created_at)
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        [reviewId, userId, parent_reply_id || null, content.trim()],
+        function(err) {
+          if (err) {
+            console.error('Error creating reply:', err);
+            return res.status(500).json({ error: err.message });
+          }
+          
+          // Get the created reply with user info
+          db.get(
+            `SELECT 
+              rr.reply_id,
+              rr.content,
+              rr.created_at,
+              rr.parent_reply_id,
+              u.user_id,
+              u.username,
+              u.avatar_url,
+              u.role
+            FROM Review_Replies rr
+            JOIN Users u ON rr.user_id = u.user_id
+            WHERE rr.reply_id = ?`,
+            [this.lastID],
+            (err, reply) => {
+              if (err) {
+                return res.status(500).json({ error: err.message });
+              }
+              res.status(201).json({ 
+                success: true, 
+                message: 'Reply added successfully',
+                reply: reply
+              });
+            }
+          );
+        }
+      );
+    }
+  });
 });
 
 // Get average rating for an album

@@ -196,6 +196,24 @@ CREATE INDEX idx_reviews_product ON Reviews(product_id);
 CREATE INDEX idx_reviews_user ON Reviews(user_id);
 CREATE INDEX idx_reviews_order ON Reviews(order_id);
 
+-- Table: Review_Replies (for replies to reviews - no edit/delete)
+CREATE TABLE Review_Replies (
+    reply_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    review_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    parent_reply_id INTEGER,  -- NULL for top-level, for nested replies
+    content TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (review_id) REFERENCES Reviews(review_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_reply_id) REFERENCES Review_Replies(reply_id) ON DELETE CASCADE
+);
+
+-- Create indexes
+CREATE INDEX idx_review_replies_review ON Review_Replies(review_id);
+CREATE INDEX idx_review_replies_user ON Review_Replies(user_id);
+CREATE INDEX idx_review_replies_parent ON Review_Replies(parent_reply_id);
+
 -- Table: Discussion_Bubbles
 -- Description: Forum/Message board for floating bubbles on frontend
 CREATE TABLE Discussion_Bubbles (

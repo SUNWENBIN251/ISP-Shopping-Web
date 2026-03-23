@@ -369,13 +369,24 @@
   },
   
   "review": {
-    "title": "商品评价",
-    "back": "返回",
-    "reviews": "条评价",
-    "noReviews": "暂无评价，快去购买后留下你的评价吧！",
-    "version": "版本",
-    "rating": "评分"
-  },
+  "title": "商品评价",
+  "back": "返回",
+  "reviews": "条评价",
+  "noReviews": "暂无评价，快去购买后留下你的评价吧！",
+  "version": "版本",
+  "rating": "评分",
+  "reply": "回复",
+  "replyToThread": "回复本讨论",
+  "replyPlaceholder": "写下你的回复...",
+  "submitReply": "提交回复",
+  "submitting": "提交中...",
+  "cancel": "取消",
+  "loginToReply": "请先登录后再回复",
+  "replyRequired": "请输入回复内容",
+  "replyTooLong": "回复内容不能超过500个字符",
+  "replySuccess": "回复成功！",
+  "replyFailed": "回复失败，请重试"
+},
   "category": {
     "albums": "张专辑",
     "title": "商品分类",

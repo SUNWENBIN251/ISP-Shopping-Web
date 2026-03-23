@@ -369,13 +369,24 @@
   },
   
   "review": {
-    "title": "商品評價",
-    "back": "返回",
-    "reviews": "條評價",
-    "noReviews": "暫無評價，快去購買後留下你的評價吧！",
-    "version": "版本",
-    "rating": "評分"
-  },
+  "title": "商品評價",
+  "back": "返回",
+  "reviews": "條評價",
+  "noReviews": "暫無評價，快去購買後留下你的評價吧！",
+  "version": "版本",
+  "rating": "評分",
+  "reply": "回覆",
+  "replyToThread": "回覆本討論",
+  "replyPlaceholder": "寫下你的回覆...",
+  "submitReply": "提交回覆",
+  "submitting": "提交中...",
+  "cancel": "取消",
+  "loginToReply": "請先登錄後再回覆",
+  "replyRequired": "請輸入回覆內容",
+  "replyTooLong": "回覆內容不能超過500個字符",
+  "replySuccess": "回覆成功！",
+  "replyFailed": "回覆失敗，請重試"
+},
   "category": {
     "albums": "張專輯",
     "title": "商品分類",
