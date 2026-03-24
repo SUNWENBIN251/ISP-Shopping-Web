@@ -719,7 +719,23 @@
       "completed": "完成时间：",
       "cancelled": "取消时间："
     },
-    "emptyOrders": "没有找到符合条件的订单。"
+    "emptyOrders": "没有找到符合条件的订单。",
+    "reportsTab": "销售报告",
+    "reports": {
+      "weeks": "周",
+      "totalTrend": "总销量趋势（所有专辑）",
+      "genreWeekly": "类别周销量对比",
+      "albumTrend": "专辑周销量趋势",
+      "productSales": "产品周销量详情",
+      "selectAlbum": "选择专辑",
+      "allAlbums": "所有专辑",
+      "album": "专辑",
+      "condition": "成色",
+      "price": "价格",
+      "units": "销量",
+      "revenue": "收入",
+      "noData": "所选时间段没有数据。"
+    }
   },
   "countries": {
     "china": "中国",

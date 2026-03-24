@@ -719,7 +719,23 @@
       "completed": "完成時間：",
       "cancelled": "取消時間："
     },
-    "emptyOrders": "沒有找到符合條件的訂單。"
+    "emptyOrders": "沒有找到符合條件的訂單。",
+    "reportsTab": "銷售報告",
+    "reports": {
+      "weeks": "週",
+      "totalTrend": "總銷量趨勢（所有專輯）",
+      "genreWeekly": "類別週銷量對比",
+      "albumTrend": "專輯週銷量趨勢",
+      "productSales": "產品週銷量詳情",
+      "selectAlbum": "選擇專輯",
+      "allAlbums": "所有專輯",
+      "album": "專輯",
+      "condition": "成色",
+      "price": "價格",
+      "units": "銷量",
+      "revenue": "收入",
+      "noData": "所選時間段沒有數據。"
+    }
   },
   "countries": {
     "china": "中國",
