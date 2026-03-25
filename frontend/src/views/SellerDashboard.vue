@@ -1016,23 +1016,40 @@ const renderGenreChart = async () => {
 
   const ctx = canvas.getContext('2d')
 
-  // Handle empty data - render empty chart with no data message
+  // Color palette for genres
+  const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e']
+
+  // Aggregate data by genre across all weeks (total units sold per genre)
+  const genreTotals = new Map()
+  data.forEach(d => {
+    if (!genreTotals.has(d.genre)) {
+      genreTotals.set(d.genre, 0)
+    }
+    genreTotals.set(d.genre, genreTotals.get(d.genre) + d.units_sold)
+  })
+
+  // Handle empty data - show pie chart with no data message
   if (!data || data.length === 0) {
-    console.log('No data to render genre chart')
     genreChartInstance = new Chart(ctx, {
-      type: 'bar',
+      type: 'pie',
       data: {
-        labels: [],
-        datasets: []
+        labels: [t('seller.reports.noData')],
+        datasets: [{
+          data: [1],
+          backgroundColor: ['#e0e0e0'],
+          borderColor: ['#e0e0e0'],
+          borderWidth: 1
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
+          legend: { display: false },
           title: {
             display: true,
-            text: t('seller.reports.noData'),
-            color: '#999'
+            text: t('seller.reports.genreWeekly'),
+            font: { size: 16 }
           }
         }
       }
@@ -1040,44 +1057,27 @@ const renderGenreChart = async () => {
     return
   }
 
-  // Group data by genre
-  const genreMap = new Map()
-  data.forEach(d => {
-    if (!genreMap.has(d.genre)) {
-      genreMap.set(d.genre, { genre: d.genre, data: [] })
-    }
-    genreMap.get(d.genre).data.push({ week: d.week_start, units: d.units_sold, revenue: d.revenue })
-  })
-
-  const genres = Array.from(genreMap.values())
-  const weeks = [...new Set(data.map(d => d.week_start))].sort()
-
-  // Color palette for genres
-  const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e']
-
   genreChartInstance = new Chart(ctx, {
-    type: 'bar',
+    type: 'pie',
     data: {
-      labels: weeks,
-      datasets: genres.map((g, i) => ({
-        label: g.genre,
-        data: weeks.map(w => {
-          const weekData = g.data.find(d => d.week === w)
-          return weekData ? weekData.units : 0
-        }),
-        backgroundColor: colors[i % colors.length],
-        borderColor: colors[i % colors.length],
+      labels: Array.from(genreTotals.keys()),
+      datasets: [{
+        data: Array.from(genreTotals.values()),
+        backgroundColor: colors,
+        borderColor: colors,
         borderWidth: 1
-      }))
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: {
-        y: { beginAtZero: true, stacked: false }
-      },
       plugins: {
-        legend: { position: 'top' }
+        legend: { position: 'top' },
+        title: {
+          display: true,
+          text: t('seller.reports.genreWeekly'),
+          font: { size: 16 }
+        }
       }
     }
   })
