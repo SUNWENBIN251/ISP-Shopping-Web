@@ -745,7 +745,16 @@
       "currentWeekRevenue": "Revenue",
       "albumRanking": "Album Sales Ranking",
       "bestSelling": "Best Selling",
-      "worstSelling": "Worst Selling"
+      "worstSelling": "Worst Selling",
+      "bestAndWorst": "Best & Worst Selling",
+      "allSorted": "All Albums Sorted",
+      "album": "Album",
+      "artist": "Artist",
+      "conditionAnalysis": "Product Condition Analysis",
+      "Mint": "Mint",
+      "NearMint": "Near Mint",
+      "Good": "Good",
+      "sales": "Sales"
     }
   },
   "countries": {

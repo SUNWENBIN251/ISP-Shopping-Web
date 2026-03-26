@@ -3002,6 +3002,28 @@ app.get('/api/seller/reports/weekly-comparison', authenticateToken, requireSelle
 
         console.log('Album ranking query:', albumRankingQuery);
 
+        // Query for product condition analysis (current week only)
+        const conditionAnalysisQuery = `
+          SELECT
+            p.condition,
+            p.product_id,
+            a.title,
+            a.artist,
+            a.cover_image_url,
+            COUNT(oi.order_item_id) as units_sold,
+            SUM(oi.quantity * oi.price_at_purchase) as revenue
+          FROM Orders o
+          JOIN Order_Items oi ON o.order_id = oi.order_id
+          JOIN Products p ON oi.product_id = p.product_id
+          JOIN Albums a ON p.album_id = a.album_id
+          WHERE o.status IN ('paid', 'shipped', 'completed')
+            AND o.created_at >= date('now', '-' || '7' || ' days')
+          GROUP BY p.condition
+          ORDER BY units_sold DESC
+        `;
+
+        console.log('Condition analysis query:', conditionAnalysisQuery);
+
         db.all(query, [], (err, rows) => {
           if (err) {
             console.error('Error fetching weekly comparison:', err);
@@ -3112,10 +3134,38 @@ app.get('/api/seller/reports/weekly-comparison', authenticateToken, requireSelle
               // Get best selling (top 3) and worst selling (bottom 3)
               const albumRanking = {
                 bestSelling: albumRows.slice(0, 3),
-                worstSelling: albumRows.length > 3 ? albumRows.slice(-3).reverse() : []
+                worstSelling: albumRows.length > 3 ? albumRows.slice(-3).reverse() : [],
+                allSorted: albumRows // Full sorted list for dropdown selection
               };
 
-              res.json({ success: true, data: { currentWeek, previousWeek, comparison, genreComparison, albumRanking } });
+              // Fetch condition analysis data
+              db.all(conditionAnalysisQuery, [], (conditionErr, conditionRows) => {
+                if (conditionErr) {
+                  console.error('Error fetching condition analysis:', conditionErr);
+                  return res.status(500).json({ error: conditionErr.message });
+                }
+
+                console.log('Condition analysis query returned rows:', conditionRows.length);
+
+                // Group by condition
+                const conditionAnalysis = {
+                  Mint: null,
+                  'Near Mint': null,
+                  'Good': null
+                };
+
+                conditionRows.forEach(row => {
+                  if (conditionAnalysis.hasOwnProperty(row.condition)) {
+                    conditionAnalysis[row.condition] = {
+                      condition: row.condition,
+                      units_sold: row.units_sold,
+                      revenue: row.revenue
+                    };
+                  }
+                });
+
+                res.json({ success: true, data: { currentWeek, previousWeek, comparison, genreComparison, albumRanking, conditionAnalysis } });
+              });
             });
           });
         });

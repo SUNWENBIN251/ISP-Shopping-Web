@@ -748,7 +748,16 @@
       "currentWeekRevenue": "收入",
       "albumRanking": "專輯銷售排行",
       "bestSelling": "最暢銷",
-      "worstSelling": "最不暢銷"
+      "worstSelling": "最不暢銷",
+      "bestAndWorst": "最暢銷與最不暢銷",
+      "allSorted": "全部專輯排序",
+      "album": "專輯",
+      "artist": "藝術家",
+      "conditionAnalysis": "產品條件分析",
+      "Mint": "全新",
+      "NearMint": "近新",
+      "Good": "良好",
+      "sales": "銷量"
     }
   },
   "countries": {

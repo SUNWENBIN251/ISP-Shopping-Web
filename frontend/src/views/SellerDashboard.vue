@@ -537,54 +537,115 @@
                       (reports.weeklyComparison.albumRanking.bestSelling.length > 0 ||
                        reports.weeklyComparison.albumRanking.worstSelling.length > 0)"
                  class="album-ranking-section">
-              <h4>{{ $t('seller.reports.albumRanking') }}</h4>
+              <div class="album-ranking-header">
+                <h4>{{ $t('seller.reports.albumRanking') }}</h4>
+                <select v-model="reports.weeklyComparison.albumSortType" class="ranking-sort-select">
+                  <option value="bestWorst">{{ $t('seller.reports.bestAndWorst') }}</option>
+                  <option value="allSorted">{{ $t('seller.reports.allSorted') }}</option>
+                </select>
+              </div>
+
               <div class="album-ranking-container">
-                <!-- Best Selling Albums -->
-                <div v-if="reports.weeklyComparison.albumRanking.bestSelling.length > 0" class="ranking-section best-selling">
-                  <h5>{{ $t('seller.reports.bestSelling') }}</h5>
-                  <div class="album-cards">
-                    <div v-for="album in reports.weeklyComparison.albumRanking.bestSelling" :key="album.album_id" class="album-card">
-                      <div class="album-cover">
-                        <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
-                      </div>
-                      <div class="album-info">
-                        <div class="album-title">{{ album.title }}</div>
-                        <div class="album-artist">{{ album.artist }}</div>
-                        <div class="album-stats">
-                          <span class="album-units">
-                            <strong>{{ album.units_sold }}</strong> {{ $t('seller.reports.units') }}
-                          </span>
-                          <span class="album-revenue">¥{{ album.revenue.toFixed(2) }}</span>
+                <!-- Best and Worst Selling Albums View -->
+                <div v-if="reports.weeklyComparison.albumSortType === 'bestWorst'" class="ranking-columns">
+                  <!-- Best Selling Albums -->
+                  <div v-if="reports.weeklyComparison.albumRanking.bestSelling.length > 0" class="ranking-section best-selling">
+                    <h5>{{ $t('seller.reports.bestSelling') }}</h5>
+                    <div class="album-cards">
+                      <div v-for="album in reports.weeklyComparison.albumRanking.bestSelling" :key="album.album_id" class="album-card">
+                        <div class="album-cover">
+                          <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
+                        </div>
+                        <div class="album-info">
+                          <div class="album-title">{{ album.title }}</div>
+                          <div class="album-artist">{{ album.artist }}</div>
+                          <div class="album-stats">
+                            <span class="album-units">
+                              <strong>{{ album.units_sold }}</strong> {{ $t('seller.reports.units') }}
+                            </span>
+                            <span class="album-revenue">¥{{ album.revenue.toFixed(2) }}</span>
+                          </div>
+                        </div>
+                        <div class="album-rank">
+                          <span class="rank-badge rank-1">#{{ reports.weeklyComparison.albumRanking.bestSelling.indexOf(album) + 1 }}</span>
                         </div>
                       </div>
-                      <div class="album-rank">
-                        <span class="rank-badge rank-1">#{{ reports.weeklyComparison.albumRanking.bestSelling.indexOf(album) + 1 }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Worst Selling Albums -->
+                  <div v-if="reports.weeklyComparison.albumRanking.worstSelling.length > 0" class="ranking-section worst-selling">
+                    <h5>{{ $t('seller.reports.worstSelling') }}</h5>
+                    <div class="album-cards">
+                      <div v-for="album in reports.weeklyComparison.albumRanking.worstSelling" :key="album.album_id" class="album-card">
+                        <div class="album-cover">
+                          <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
+                        </div>
+                        <div class="album-info">
+                          <div class="album-title">{{ album.title }}</div>
+                          <div class="album-artist">{{ album.artist }}</div>
+                          <div class="album-stats">
+                            <span class="album-units">
+                              <strong>{{ album.units_sold }}</strong> {{ $t('seller.reports.units') }}
+                            </span>
+                            <span class="album-revenue">¥{{ album.revenue.toFixed(2) }}</span>
+                          </div>
+                        </div>
+                        <div class="album-rank">
+                          <span class="rank-badge rank-low">↓#{{ reports.weeklyComparison.albumRanking.worstSelling.indexOf(album) + 1 }}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Worst Selling Albums -->
-                <div v-if="reports.weeklyComparison.albumRanking.worstSelling.length > 0" class="ranking-section worst-selling">
-                  <h5>{{ $t('seller.reports.worstSelling') }}</h5>
-                  <div class="album-cards">
-                    <div v-for="album in reports.weeklyComparison.albumRanking.worstSelling" :key="album.album_id" class="album-card">
-                      <div class="album-cover">
-                        <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
-                      </div>
-                      <div class="album-info">
-                        <div class="album-title">{{ album.title }}</div>
-                        <div class="album-artist">{{ album.artist }}</div>
-                        <div class="album-stats">
-                          <span class="album-units">
-                            <strong>{{ album.units_sold }}</strong> {{ $t('seller.reports.units') }}
-                          </span>
-                          <span class="album-revenue">¥{{ album.revenue.toFixed(2) }}</span>
-                        </div>
-                      </div>
-                      <div class="album-rank">
-                        <span class="rank-badge rank-low">↓#{{ reports.weeklyComparison.albumRanking.worstSelling.indexOf(album) + 1 }}</span>
-                      </div>
+                <!-- All Albums Sorted View -->
+                <div v-if="reports.weeklyComparison.albumSortType === 'allSorted'" class="all-albums-table">
+                  <table class="sorted-albums-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>{{ $t('seller.reports.album') }}</th>
+                        <th>{{ $t('seller.reports.artist') }}</th>
+                        <th>{{ $t('seller.reports.sales') }}</th>
+                        <th>{{ $t('seller.reports.revenue') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(album, index) in reports.weeklyComparison.albumRanking.allSorted" :key="album.album_id">
+                        <td class="rank-cell">{{ index + 1 }}</td>
+                        <td>{{ album.title }}</td>
+                        <td>{{ album.artist }}</td>
+                        <td>{{ album.units_sold }}</td>
+                        <td>¥{{ album.revenue.toFixed(2) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Condition Analysis Section -->
+            <div v-if="reports.weeklyComparison.conditionAnalysis &&
+                      (reports.weeklyComparison.conditionAnalysis.Mint ||
+                       reports.weeklyComparison.conditionAnalysis['Near Mint'] ||
+                       reports.weeklyComparison.conditionAnalysis['Good'])"
+                 class="condition-analysis-section">
+              <h4>{{ $t('seller.reports.conditionAnalysis') }}</h4>
+              <div class="condition-cards">
+                <div v-for="condition in conditionConditions" :key="condition" class="condition-card" :class="getBestConditionClass(condition)">
+                  <div class="condition-header">
+                    <span class="condition-label">{{ $t('seller.reports.' + condition.replace(' ', '')) }}</span>
+                    <span class="condition-badge">{{ getBestConditionBadge(condition) }}</span>
+                  </div>
+                  <div class="condition-stats">
+                    <div class="condition-stat">
+                      <span class="stat-label">{{ $t('seller.reports.sales') }}:</span>
+                      <span class="stat-value">{{ reports.weeklyComparison.conditionAnalysis[condition]?.units_sold || 0 }}</span>
+                    </div>
+                    <div class="condition-stat">
+                      <span class="stat-label">{{ $t('seller.reports.revenue') }}:</span>
+                      <span class="stat-value">¥{{ (reports.weeklyComparison.conditionAnalysis[condition]?.revenue || 0).toFixed(2) }}</span>
                     </div>
                   </div>
                 </div>
@@ -800,6 +861,38 @@ const filteredAlbums = computed(() => {
   })
 })
 
+// Computed: Get condition conditions array
+const conditionConditions = computed(() => {
+  return ['Mint', 'Near Mint', 'Good']
+})
+
+// Helper: Get best/worst condition class
+const getBestConditionClass = (condition) => {
+  const conditions = reports.value.weeklyComparison.conditionAnalysis
+  if (!conditions) return 'neutral'
+
+  const unitsSold = {
+    'Mint': conditions.Mint?.units_sold || 0,
+    'Near Mint': conditions['Near Mint']?.units_sold || 0,
+    'Good': conditions.Good?.units_sold || 0
+  }
+
+  const maxSales = Math.max(unitsSold['Mint'], unitsSold['Near Mint'], unitsSold['Good'])
+  const minSales = Math.min(unitsSold['Mint'], unitsSold['Near Mint'], unitsSold['Good'])
+
+  if (unitsSold[condition] === maxSales) return 'best'
+  if (unitsSold[condition] === minSales) return 'worst'
+  return 'neutral'
+}
+
+// Helper: Get best/worst condition badge
+const getBestConditionBadge = (condition) => {
+  const cls = getBestConditionClass(condition)
+  if (cls === 'best') return '↑'
+  if (cls === 'worst') return '↓'
+  return ''
+}
+
 // Album form
 const editingAlbum = ref(false)
 const albumForm = ref({
@@ -853,8 +946,15 @@ const reports = ref({
     genreComparison: [],
     albumRanking: {
       bestSelling: [],
-      worstSelling: []
+      worstSelling: [],
+      allSorted: []
     },
+    conditionAnalysis: {
+      Mint: null,
+      'Near Mint': null,
+      'Good': null
+    },
+    albumSortType: 'bestWorst', // 'bestWorst' or 'allSorted'
     loading: false,
     error: null
   }
@@ -994,7 +1094,8 @@ const loadReports = async () => {
       reports.value.weeklyComparison.previous = data.data.previousWeek
       reports.value.weeklyComparison.comparison = data.data.comparison
       reports.value.weeklyComparison.genreComparison = data.data.genreComparison || []
-      reports.value.weeklyComparison.albumRanking = data.data.albumRanking || { bestSelling: [], worstSelling: [] }
+      reports.value.weeklyComparison.albumRanking = data.data.albumRanking || { bestSelling: [], worstSelling: [], allSorted: [] }
+      reports.value.weeklyComparison.conditionAnalysis = data.data.conditionAnalysis || { Mint: null, 'Near Mint': null, 'Good': null }
     } else {
       console.error('Weekly comparison API failed:', comparisonRes.status)
       const errorText = await comparisonRes.text()
@@ -2853,6 +2954,182 @@ const formatDateTime = (dateString) => {
   font-size: var(--font-size-base);
   background: var(--color-bg-light);
   border-radius: var(--border-radius-md);
+}
+
+/* Album Ranking Header with Sort Select */
+.album-ranking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.album-ranking-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.ranking-sort-select {
+  padding: 8px 16px;
+  font-size: 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+}
+
+.ranking-sort-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Album Ranking Columns */
+.ranking-columns {
+  display: flex;
+  gap: 20px;
+}
+
+/* All Albums Sorted Table */
+.all-albums-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.all-albums-table thead {
+  background: #f5f5f5;
+}
+
+.all-albums-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.all-albums-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.all-albums-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.all-albums-table .rank-cell {
+  font-weight: bold;
+  color: #667eea;
+  width: 50px;
+}
+
+/* Product Condition Analysis Section */
+.condition-analysis-section {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.condition-analysis-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.condition-cards {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.condition-card {
+  flex: 1;
+  min-width: 200px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.condition-card.best {
+  border-color: #4caf50;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+}
+
+.condition-card.worst {
+  border-color: #f44336;
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+}
+
+.condition-card.neutral {
+  border-color: #e0e0e0;
+  background: #f5f5f5;
+}
+
+.condition-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.condition-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.condition-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.condition-badge {
+  font-size: 18px;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 50%;
+  min-width: 32px;
+  text-align: center;
+}
+
+.condition-card.best .condition-badge {
+  color: #4caf50;
+}
+
+.condition-card.worst .condition-badge {
+  color: #f44336;
+}
+
+.condition-card.neutral .condition-badge {
+  color: #9e9e9e;
+}
+
+.condition-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.condition-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.condition-stat .stat-label {
+  color: #666;
+}
+
+.condition-stat .stat-value {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
 }
 
 @media (max-width: 768px) {
