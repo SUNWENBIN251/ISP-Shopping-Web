@@ -451,6 +451,210 @@
           </div>
         </div>
 
+        <!-- Weekly Comparison Card -->
+        <div class="report-section weekly-comparison-card">
+          <h3>{{ $t('seller.reports.weeklyComparison') }}</h3>
+          <div v-if="reports.loading" class="loading">{{ $t('seller.loading') }}</div>
+          <div v-else-if="reports.weeklyComparison.comparison" class="comparison-container">
+            <!-- Current Week Stats -->
+            <div class="comparison-block current-week">
+              <div class="stat-row">
+                <span class="stat-label">{{ $t('seller.reports.currentWeekTotalSales') }}</span>
+                <span class="stat-value">{{ reports.weeklyComparison.comparison.current.units_sold }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">{{ $t('seller.reports.currentWeekTotalRevenue') }}</span>
+                <span class="stat-value">¥{{ (reports.weeklyComparison.comparison.current.revenue || 0).toFixed(2) }}</span>
+              </div>
+            </div>
+
+            <!-- Comparison Indicators -->
+            <div class="comparison-indicators">
+              <div class="indicator-item" :class="getChangeClass(reports.weeklyComparison.comparison.unitsSoldChange)">
+                <span class="indicator-label">{{ $t('seller.reports.salesChange') }}</span>
+                <span class="indicator-value">
+                  <span v-if="reports.weeklyComparison.comparison.unitsSoldChange > 0">+</span>
+                  {{ reports.weeklyComparison.comparison.unitsSoldChange }}%
+                  <span v-if="reports.weeklyComparison.comparison.unitsSoldChange > 0">↑</span>
+                  <span v-else-if="reports.weeklyComparison.comparison.unitsSoldChange < 0">↓</span>
+                </span>
+              </div>
+              <div class="indicator-item" :class="getChangeClass(reports.weeklyComparison.comparison.revenueChange)">
+                <span class="indicator-label">{{ $t('seller.reports.revenueChange') }}</span>
+                <span class="indicator-value">
+                  <span v-if="reports.weeklyComparison.comparison.revenueChange > 0">+</span>
+                  {{ reports.weeklyComparison.comparison.revenueChange }}%
+                  <span v-if="reports.weeklyComparison.comparison.revenueChange > 0">↑</span>
+                  <span v-else-if="reports.weeklyComparison.comparison.revenueChange < 0">↓</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Previous Week Stats (Optional Reference) -->
+            <div class="comparison-block previous-week">
+              <div class="stat-row small">
+                <span class="stat-label">{{ $t('seller.reports.previousWeek') }}:</span>
+                <span class="stat-value-small">
+                  {{ reports.weeklyComparison.comparison.previous.units_sold }} {{ $t('seller.reports.units') }},
+                  ¥{{ (reports.weeklyComparison.comparison.previous.revenue || 0).toFixed(2) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Genre Comparison Table -->
+            <div v-if="reports.weeklyComparison.genreComparison && reports.weeklyComparison.genreComparison.length > 0" class="genre-comparison-section">
+              <h4>{{ $t('seller.reports.genreComparison') }}</h4>
+              <div class="genre-table-container">
+                <table class="genre-comparison-table">
+                  <thead>
+                    <tr>
+                      <th>{{ $t('seller.reports.genre') }}</th>
+                      <th>{{ $t('seller.reports.currentWeekSales') }}</th>
+                      <th>{{ $t('seller.reports.currentWeekRevenue') }}</th>
+                      <th>{{ $t('seller.reports.salesChange') }}</th>
+                      <th>{{ $t('seller.reports.revenueChange') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="genre in reports.weeklyComparison.genreComparison" :key="genre.genre_name">
+                      <td class="genre-name">{{ genre.genre_name }}</td>
+                      <td>{{ genre.current.units_sold }}</td>
+                      <td>¥{{ genre.current.revenue.toFixed(2) }}</td>
+                      <td :class="getChangeClass(genre.unitsSoldChange)">
+                        <span v-if="genre.unitsSoldChange > 0">+</span>{{ genre.unitsSoldChange }}%
+                      </td>
+                      <td :class="getChangeClass(genre.revenueChange)">
+                        <span v-if="genre.revenueChange > 0">+</span>{{ genre.revenueChange }}%
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Album Ranking Section -->
+            <div v-if="reports.weeklyComparison.albumRanking &&
+                      (reports.weeklyComparison.albumRanking.bestSelling.length > 0 ||
+                       reports.weeklyComparison.albumRanking.worstSelling.length > 0)"
+                 class="album-ranking-section">
+              <div class="album-ranking-header">
+                <h4>{{ $t('seller.reports.albumRanking') }}</h4>
+                <select v-model="reports.weeklyComparison.albumSortType" class="ranking-sort-select">
+                  <option value="bestWorst">{{ $t('seller.reports.bestAndWorst') }}</option>
+                  <option value="allSorted">{{ $t('seller.reports.allSorted') }}</option>
+                </select>
+              </div>
+
+              <div class="album-ranking-container">
+                <!-- Best and Worst Selling Albums View -->
+                <div v-if="reports.weeklyComparison.albumSortType === 'bestWorst'" class="ranking-columns">
+                  <!-- Best Selling Albums -->
+                  <div v-if="reports.weeklyComparison.albumRanking.bestSelling.length > 0" class="ranking-section best-selling">
+                    <h5>{{ $t('seller.reports.bestSelling') }}</h5>
+                    <div class="album-cards">
+                      <div v-for="album in reports.weeklyComparison.albumRanking.bestSelling" :key="album.album_id" class="album-card">
+                        <div class="album-cover">
+                          <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
+                        </div>
+                        <div class="album-info">
+                          <div class="album-title">{{ album.title }}</div>
+                          <div class="album-artist">{{ album.artist }}</div>
+                          <div class="album-stats">
+                            <span class="album-units">
+                              <strong>{{ album.units_sold }}</strong> {{ $t('seller.reports.units') }}
+                            </span>
+                            <span class="album-revenue">¥{{ album.revenue.toFixed(2) }}</span>
+                          </div>
+                        </div>
+                        <div class="album-rank">
+                          <span class="rank-badge rank-1">#{{ reports.weeklyComparison.albumRanking.bestSelling.indexOf(album) + 1 }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Worst Selling Albums -->
+                  <div v-if="reports.weeklyComparison.albumRanking.worstSelling.length > 0" class="ranking-section worst-selling">
+                    <h5>{{ $t('seller.reports.worstSelling') }}</h5>
+                    <div class="album-cards">
+                      <div v-for="album in reports.weeklyComparison.albumRanking.worstSelling" :key="album.album_id" class="album-card">
+                        <div class="album-cover">
+                          <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
+                        </div>
+                        <div class="album-info">
+                          <div class="album-title">{{ album.title }}</div>
+                          <div class="album-artist">{{ album.artist }}</div>
+                          <div class="album-stats">
+                            <span class="album-units">
+                              <strong>{{ album.units_sold }}</strong> {{ $t('seller.reports.units') }}
+                            </span>
+                            <span class="album-revenue">¥{{ album.revenue.toFixed(2) }}</span>
+                          </div>
+                        </div>
+                        <div class="album-rank">
+                          <span class="rank-badge rank-low">↓#{{ reports.weeklyComparison.albumRanking.worstSelling.indexOf(album) + 1 }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- All Albums Sorted View -->
+                <div v-if="reports.weeklyComparison.albumSortType === 'allSorted'" class="all-albums-table">
+                  <table class="sorted-albums-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>{{ $t('seller.reports.album') }}</th>
+                        <th>{{ $t('seller.reports.artist') }}</th>
+                        <th>{{ $t('seller.reports.sales') }}</th>
+                        <th>{{ $t('seller.reports.revenue') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(album, index) in reports.weeklyComparison.albumRanking.allSorted" :key="album.album_id">
+                        <td class="rank-cell">{{ index + 1 }}</td>
+                        <td>{{ album.title }}</td>
+                        <td>{{ album.artist }}</td>
+                        <td>{{ album.units_sold }}</td>
+                        <td>¥{{ album.revenue.toFixed(2) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Condition Analysis Section -->
+            <div v-if="reports.weeklyComparison.conditionAnalysis &&
+                      (reports.weeklyComparison.conditionAnalysis.Mint ||
+                       reports.weeklyComparison.conditionAnalysis['Near Mint'] ||
+                       reports.weeklyComparison.conditionAnalysis['Good'])"
+                 class="condition-analysis-section">
+              <h4>{{ $t('seller.reports.conditionAnalysis') }}</h4>
+              <div class="condition-cards">
+                <div v-for="condition in conditionConditions" :key="condition" class="condition-card" :class="getBestConditionClass(condition)">
+                  <div class="condition-header">
+                    <span class="condition-label">{{ $t('seller.reports.' + condition.replace(' ', '')) }}</span>
+                    <span class="condition-badge">{{ getBestConditionBadge(condition) }}</span>
+                  </div>
+                  <div class="condition-stats">
+                    <div class="condition-stat">
+                      <span class="stat-label">{{ $t('seller.reports.sales') }}:</span>
+                      <span class="stat-value">{{ reports.weeklyComparison.conditionAnalysis[condition]?.units_sold || 0 }}</span>
+                    </div>
+                    <div class="condition-stat">
+                      <span class="stat-label">{{ $t('seller.reports.revenue') }}:</span>
+                      <span class="stat-value">¥{{ (reports.weeklyComparison.conditionAnalysis[condition]?.revenue || 0).toFixed(2) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else-if="!reports.loading" class="no-data">{{ $t('seller.reports.noWeeklyComparisonData') }}</div>
+        </div>
+
         <!-- Feature 1: Total Sales Trend -->
         <div class="report-section">
           <h3>{{ $t('seller.reports.totalTrend') }}</h3>
@@ -657,6 +861,38 @@ const filteredAlbums = computed(() => {
   })
 })
 
+// Computed: Get condition conditions array
+const conditionConditions = computed(() => {
+  return ['Mint', 'Near Mint', 'Good']
+})
+
+// Helper: Get best/worst condition class
+const getBestConditionClass = (condition) => {
+  const conditions = reports.value.weeklyComparison.conditionAnalysis
+  if (!conditions) return 'neutral'
+
+  const unitsSold = {
+    'Mint': conditions.Mint?.units_sold || 0,
+    'Near Mint': conditions['Near Mint']?.units_sold || 0,
+    'Good': conditions.Good?.units_sold || 0
+  }
+
+  const maxSales = Math.max(unitsSold['Mint'], unitsSold['Near Mint'], unitsSold['Good'])
+  const minSales = Math.min(unitsSold['Mint'], unitsSold['Near Mint'], unitsSold['Good'])
+
+  if (unitsSold[condition] === maxSales) return 'best'
+  if (unitsSold[condition] === minSales) return 'worst'
+  return 'neutral'
+}
+
+// Helper: Get best/worst condition badge
+const getBestConditionBadge = (condition) => {
+  const cls = getBestConditionClass(condition)
+  if (cls === 'best') return '↑'
+  if (cls === 'worst') return '↓'
+  return ''
+}
+
 // Album form
 const editingAlbum = ref(false)
 const albumForm = ref({
@@ -697,7 +933,31 @@ const reports = ref({
   albumData: [],
   productData: [],
   selectedAlbumId: null,
-  albumsList: []
+  albumsList: [],
+  weeklyComparison: {
+    current: { units_sold: 0, revenue: 0 },
+    previous: { units_sold: 0, revenue: 0 },
+    comparison: {
+      current: { units_sold: 0, revenue: 0 },
+      previous: { units_sold: 0, revenue: 0 },
+      unitsSoldChange: 0,
+      revenueChange: 0
+    },
+    genreComparison: [],
+    albumRanking: {
+      bestSelling: [],
+      worstSelling: [],
+      allSorted: []
+    },
+    conditionAnalysis: {
+      Mint: null,
+      'Near Mint': null,
+      'Good': null
+    },
+    albumSortType: 'bestWorst', // 'bestWorst' or 'allSorted'
+    loading: false,
+    error: null
+  }
 })
 
 // Chart instances
@@ -732,6 +992,13 @@ const formatDate = (dateString) => {
 // Helper: Handle image error
 const handleImageError = (e) => {
   e.target.src = 'https://via.placeholder.com/50?text=No+Image'
+}
+
+// Helper: Get CSS class for change indicator
+const getChangeClass = (change) => {
+  if (change > 0) return 'positive'
+  if (change < 0) return 'negative'
+  return 'neutral'
 }
 
 // Toggle album products visibility
@@ -814,6 +1081,25 @@ const loadReports = async () => {
       reports.value.genreData = data.data
     } else {
       console.error('Genre API failed:', genreRes.status)
+    }
+
+    // Load weekly comparison data
+    console.log('Fetching weekly comparison data...')
+    const comparisonRes = await fetch(`/api/seller/reports/weekly-comparison?weeks=${reports.value.weeks}`, { headers })
+    console.log('Weekly comparison response status:', comparisonRes.status)
+    if (comparisonRes.ok) {
+      const data = await comparisonRes.json()
+      console.log('Weekly comparison data:', data)
+      reports.value.weeklyComparison.current = data.data.currentWeek
+      reports.value.weeklyComparison.previous = data.data.previousWeek
+      reports.value.weeklyComparison.comparison = data.data.comparison
+      reports.value.weeklyComparison.genreComparison = data.data.genreComparison || []
+      reports.value.weeklyComparison.albumRanking = data.data.albumRanking || { bestSelling: [], worstSelling: [], allSorted: [] }
+      reports.value.weeklyComparison.conditionAnalysis = data.data.conditionAnalysis || { Mint: null, 'Near Mint': null, 'Good': null }
+    } else {
+      console.error('Weekly comparison API failed:', comparisonRes.status)
+      const errorText = await comparisonRes.text()
+      console.error('Error response:', errorText)
     }
 
     // Load albums list
@@ -2670,6 +2956,182 @@ const formatDateTime = (dateString) => {
   border-radius: var(--border-radius-md);
 }
 
+/* Album Ranking Header with Sort Select */
+.album-ranking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.album-ranking-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.ranking-sort-select {
+  padding: 8px 16px;
+  font-size: 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+}
+
+.ranking-sort-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Album Ranking Columns */
+.ranking-columns {
+  display: flex;
+  gap: 20px;
+}
+
+/* All Albums Sorted Table */
+.all-albums-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.all-albums-table thead {
+  background: #f5f5f5;
+}
+
+.all-albums-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.all-albums-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.all-albums-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.all-albums-table .rank-cell {
+  font-weight: bold;
+  color: #667eea;
+  width: 50px;
+}
+
+/* Product Condition Analysis Section */
+.condition-analysis-section {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.condition-analysis-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.condition-cards {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.condition-card {
+  flex: 1;
+  min-width: 200px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.condition-card.best {
+  border-color: #4caf50;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+}
+
+.condition-card.worst {
+  border-color: #f44336;
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+}
+
+.condition-card.neutral {
+  border-color: #e0e0e0;
+  background: #f5f5f5;
+}
+
+.condition-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.condition-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.condition-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.condition-badge {
+  font-size: 18px;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 50%;
+  min-width: 32px;
+  text-align: center;
+}
+
+.condition-card.best .condition-badge {
+  color: #4caf50;
+}
+
+.condition-card.worst .condition-badge {
+  color: #f44336;
+}
+
+.condition-card.neutral .condition-badge {
+  color: #9e9e9e;
+}
+
+.condition-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.condition-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.condition-stat .stat-label {
+  color: #666;
+}
+
+.condition-stat .stat-value {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
 @media (max-width: 768px) {
   .dashboard-tabs {
     flex-wrap: wrap;
@@ -2702,6 +3164,351 @@ const formatDateTime = (dateString) => {
   
   .order-details {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Weekly Comparison Card Styles */
+.weekly-comparison-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.comparison-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.comparison-block {
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.comparison-block.current-week {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.comparison-block.previous-week {
+  background: #f5f5f5;
+  padding: 10px 15px;
+}
+
+.comparison-block .stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.comparison-block .stat-row:last-child {
+  margin-bottom: 0;
+}
+
+.comparison-block .stat-label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.comparison-block .stat-value {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.comparison-block .stat-row.small {
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.comparison-block .stat-value-small {
+  font-size: 13px;
+  color: #666;
+}
+
+.comparison-indicators {
+  display: flex;
+  gap: 15px;
+}
+
+.indicator-item {
+  flex: 1;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.indicator-item.positive {
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+}
+
+.indicator-item.negative {
+  background: #ffebee;
+  border: 2px solid #f44336;
+}
+
+.indicator-item.neutral {
+  background: #f5f5f5;
+  border: 2px solid #9e9e9e;
+}
+
+.indicator-label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.indicator-value {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.indicator-item.positive .indicator-value {
+  color: #4caf50;
+}
+
+.indicator-item.negative .indicator-value {
+  color: #f44336;
+}
+
+.indicator-item.neutral .indicator-value {
+  color: #9e9e9e;
+}
+
+/* Genre Comparison Section */
+.genre-comparison-section {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.genre-comparison-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.genre-table-container {
+  overflow-x: auto;
+}
+
+.genre-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.genre-comparison-table thead {
+  background: #f5f5f5;
+}
+
+.genre-comparison-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.genre-comparison-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.genre-comparison-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.genre-comparison-table td.genre-name {
+  font-weight: 500;
+  color: #667eea;
+}
+
+.genre-comparison-table td.positive {
+  color: #4caf50;
+  font-weight: 500;
+}
+
+.genre-comparison-table td.negative {
+  color: #f44336;
+  font-weight: 500;
+}
+
+.genre-comparison-table td.neutral {
+  color: #9e9e9e;
+}
+
+/* Album Ranking Section */
+.album-ranking-section {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.album-ranking-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.album-ranking-container {
+  display: flex;
+  gap: 20px;
+}
+
+.ranking-section {
+  flex: 1;
+}
+
+.ranking-section h5 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.ranking-section.best-selling h5 {
+  color: #4caf50;
+}
+
+.ranking-section.worst-selling h5 {
+  color: #f44336;
+}
+
+.album-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.album-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.album-card:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.album-cover {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #eee;
+}
+
+.album-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.album-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-artist {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.album-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.album-units {
+  font-size: 12px;
+  color: #666;
+}
+
+.album-revenue {
+  font-size: 12px;
+  color: #667eea;
+  font-weight: 500;
+}
+
+.album-rank {
+  flex-shrink: 0;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.rank-1 {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  color: #333;
+}
+
+.rank-2 {
+  background: linear-gradient(135deg, #c0c0c0 0%, #e0e0e0 100%);
+  color: #333;
+}
+
+.rank-3 {
+  background: linear-gradient(135deg, #cd7f32 0%, #ffd700 100%);
+  color: #fff;
+}
+
+.rank-low {
+  background: #f5f5f5;
+  color: #999;
+  border: 1px solid #ddd;
+}
+
+/* Responsive Design for Weekly Comparison */
+@media (max-width: 768px) {
+  .comparison-indicators {
+    flex-direction: column;
+  }
+
+  .comparison-block .stat-value {
+    font-size: 22px;
+  }
+
+  .indicator-value {
+    font-size: 20px;
   }
 }
 </style>

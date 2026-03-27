@@ -2919,7 +2919,283 @@ app.get('/api/seller/reports/test-query', authenticateToken, requireSeller, (req
   });
 });
 
-// ==================== HEALTH CHECK ====================
+// Weekly comparison API: Current week vs previous week
+app.get('/api/seller/reports/weekly-comparison', authenticateToken, requireSeller, (req, res) => {
+  try {
+    let weeks = parseInt(req.query.weeks);
+    if (isNaN(weeks)) weeks = 12;
+    weeks = Math.max(Math.min(weeks, 52), 4);
+    const days = weeks * 7;
+
+    console.log(`Weekly comparison: weeks=${weeks}, days=${days}`);
+
+    // First, check if Orders and Order_Items tables exist and have data
+    db.get("SELECT COUNT(*) as count FROM Orders WHERE status IN ('paid', 'shipped', 'completed')", [], (err, orderRow) => {
+      if (err) {
+        console.error('Error checking Orders table:', err);
+        return res.status(500).json({ error: 'Orders table error: ' + err.message });
+      }
+      console.log('Completed/paid/shipped orders count:', orderRow.count);
+
+      db.get("SELECT COUNT(*) as count FROM Order_Items", [], (err, itemRow) => {
+        if (err) {
+          console.error('Error checking Order_Items table:', err);
+          return res.status(500).json({ error: 'Order_Items table error: ' + err.message });
+        }
+        console.log('Order items count:', itemRow.count);
+
+        // Now run the main query for total sales
+        const query = `
+          SELECT
+            strftime('%Y-%W', o.created_at) as week,
+            COUNT(oi.order_item_id) as units_sold,
+            SUM(oi.quantity * oi.price_at_purchase) as revenue
+          FROM Orders o
+          JOIN Order_Items oi ON o.order_id = oi.order_id
+          WHERE o.status IN ('paid', 'shipped', 'completed')
+            AND o.created_at >= date('now', '-' || ${days} || ' days')
+          GROUP BY week
+          ORDER BY week ASC
+        `;
+
+        console.log('Weekly comparison query:', query);
+
+        // Query for genre-level data
+        const genreQuery = `
+          SELECT
+            a.genre,
+            strftime('%Y-%W', o.created_at) as week,
+            COUNT(oi.order_item_id) as units_sold,
+            SUM(oi.quantity * oi.price_at_purchase) as revenue
+          FROM Orders o
+          JOIN Order_Items oi ON o.order_id = oi.order_id
+          JOIN Products p ON oi.product_id = p.product_id
+          JOIN Albums a ON p.album_id = a.album_id
+          WHERE o.status IN ('paid', 'shipped', 'completed')
+            AND o.created_at >= date('now', '-' || ${days} || ' days')
+            AND a.genre IS NOT NULL
+          GROUP BY a.genre, week
+          ORDER BY a.genre, week ASC
+        `;
+
+        console.log('Genre comparison query:', genreQuery);
+
+        // Query for album sales ranking (current week only)
+        const albumRankingQuery = `
+          SELECT
+            a.album_id,
+            a.title,
+            a.artist,
+            a.cover_image_url,
+            COUNT(oi.order_item_id) as units_sold,
+            SUM(oi.quantity * oi.price_at_purchase) as revenue
+          FROM Orders o
+          JOIN Order_Items oi ON o.order_id = oi.order_id
+          JOIN Products p ON oi.product_id = p.product_id
+          JOIN Albums a ON p.album_id = a.album_id
+          WHERE o.status IN ('paid', 'shipped', 'completed')
+            AND o.created_at >= date('now', '-' || '7' || ' days')
+          GROUP BY a.album_id
+          ORDER BY units_sold DESC, revenue DESC
+          LIMIT 10
+        `;
+
+        console.log('Album ranking query:', albumRankingQuery);
+
+        // Query for product condition analysis (current week only)
+        const conditionAnalysisQuery = `
+          SELECT
+            p.condition,
+            p.product_id,
+            a.title,
+            a.artist,
+            a.cover_image_url,
+            COUNT(oi.order_item_id) as units_sold,
+            SUM(oi.quantity * oi.price_at_purchase) as revenue
+          FROM Orders o
+          JOIN Order_Items oi ON o.order_id = oi.order_id
+          JOIN Products p ON oi.product_id = p.product_id
+          JOIN Albums a ON p.album_id = a.album_id
+          WHERE o.status IN ('paid', 'shipped', 'completed')
+            AND o.created_at >= date('now', '-' || '7' || ' days')
+          GROUP BY p.condition
+          ORDER BY units_sold DESC
+        `;
+
+        console.log('Condition analysis query:', conditionAnalysisQuery);
+
+        db.all(query, [], (err, rows) => {
+          if (err) {
+            console.error('Error fetching weekly comparison:', err);
+            console.error('Error stack:', err.stack);
+            return res.status(500).json({ error: err.message });
+          }
+
+          console.log('Weekly comparison query returned rows:', rows.length);
+          console.log('Query result:', JSON.stringify(rows, null, 2));
+
+          if (!rows || rows.length === 0) {
+            console.log('No orders found in date range');
+            return res.json({ success: true, data: { currentWeek: null, previousWeek: null, comparison: null, genreComparison: [] } });
+          }
+
+          // Since rows are ordered by week ASC, the last row is the most recent week (current week)
+          // The second-to-last row is the previous week
+          const currentWeek = rows[rows.length - 1] || {};
+          const previousWeek = rows.length > 1 ? rows[rows.length - 2] : null;
+
+          // Calculate comparison
+          const comparison = {
+            current: {
+              units_sold: currentWeek.units_sold || 0,
+              revenue: currentWeek.revenue || 0
+            },
+            previous: {
+              units_sold: previousWeek?.units_sold || 0,
+              revenue: previousWeek?.revenue || 0
+            }
+          };
+
+          if (previousWeek && previousWeek.units_sold > 0) {
+            comparison.unitsSoldChange = Math.round(((currentWeek.units_sold - previousWeek.units_sold) / previousWeek.units_sold) * 100);
+            comparison.revenueChange = Math.round(((currentWeek.revenue - previousWeek.revenue) / previousWeek.revenue) * 100);
+          } else {
+            comparison.unitsSoldChange = 0;
+            comparison.revenueChange = 0;
+          }
+
+          console.log('Weekly comparison result:', comparison);
+          console.log('Current week:', currentWeek);
+          console.log('Previous week:', previousWeek);
+
+          // Fetch genre-level data
+          db.all(genreQuery, [], (genreErr, genreRows) => {
+            if (genreErr) {
+              console.error('Error fetching genre comparison:', genreErr);
+              return res.status(500).json({ error: genreErr.message });
+            }
+
+            console.log('Genre comparison query returned rows:', genreRows.length);
+
+            const genreMap = new Map();
+            genreRows.forEach(row => {
+              if (!genreMap.has(row.genre)) {
+                genreMap.set(row.genre, {
+                  genre: row.genre,
+                  weeks: []
+                });
+              }
+              genreMap.get(row.genre).weeks.push(row);
+            });
+
+            // Calculate genre comparisons
+            const genreComparison = [];
+            genreMap.forEach(genreData => {
+              const weeks = genreData.weeks;
+              const currentWeekData = weeks[weeks.length - 1];
+              const previousWeekData = weeks.length > 1 ? weeks[weeks.length - 2] : null;
+
+              const result = {
+                genre_name: genreData.genre,
+                current: {
+                  units_sold: currentWeekData.units_sold || 0,
+                  revenue: currentWeekData.revenue || 0
+                },
+                previous: {
+                  units_sold: previousWeekData?.units_sold || 0,
+                  revenue: previousWeekData?.revenue || 0
+                }
+              };
+
+              if (previousWeekData && previousWeekData.units_sold > 0) {
+                result.unitsSoldChange = Math.round(((currentWeekData.units_sold - previousWeekData.units_sold) / previousWeekData.units_sold) * 100);
+              } else {
+                result.unitsSoldChange = 0;
+              }
+
+              if (previousWeekData && previousWeekData.revenue > 0) {
+                result.revenueChange = Math.round(((currentWeekData.revenue - previousWeekData.revenue) / previousWeekData.revenue) * 100);
+              } else {
+                result.revenueChange = 0;
+              }
+
+              genreComparison.push(result);
+            });
+
+            // Fetch album ranking data
+            db.all(albumRankingQuery, [], (albumErr, albumRows) => {
+              if (albumErr) {
+                console.error('Error fetching album ranking:', albumErr);
+                return res.status(500).json({ error: albumErr.message });
+              }
+
+              console.log('Album ranking query returned rows:', albumRows.length);
+
+              // Get best selling (top 3) and worst selling (bottom 3)
+              const albumRanking = {
+                bestSelling: albumRows.slice(0, 3),
+                worstSelling: albumRows.length > 3 ? albumRows.slice(-3).reverse() : [],
+                allSorted: albumRows // Full sorted list for dropdown selection
+              };
+
+              // Fetch condition analysis data
+              db.all(conditionAnalysisQuery, [], (conditionErr, conditionRows) => {
+                if (conditionErr) {
+                  console.error('Error fetching condition analysis:', conditionErr);
+                  return res.status(500).json({ error: conditionErr.message });
+                }
+
+                console.log('Condition analysis query returned rows:', conditionRows.length);
+
+                // Group by condition
+                const conditionAnalysis = {
+                  Mint: null,
+                  'Near Mint': null,
+                  'Good': null
+                };
+
+                conditionRows.forEach(row => {
+                  if (conditionAnalysis.hasOwnProperty(row.condition)) {
+                    conditionAnalysis[row.condition] = {
+                      condition: row.condition,
+                      units_sold: row.units_sold,
+                      revenue: row.revenue
+                    };
+                  }
+                });
+
+                res.json({ success: true, data: { currentWeek, previousWeek, comparison, genreComparison, albumRanking, conditionAnalysis } });
+              });
+            });
+          });
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Unexpected error in weekly comparison:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test API to verify basic functionality
+app.get('/api/seller/reports/test-comparison', authenticateToken, requireSeller, (req, res) => {
+  console.log('Test comparison API called');
+  res.json({
+    success: true,
+    data: {
+      currentWeek: { units_sold: 100, revenue: 5000 },
+      previousWeek: { units_sold: 80, revenue: 4000 },
+      comparison: {
+        current: { units_sold: 100, revenue: 5000 },
+        previous: { units_sold: 80, revenue: 4000 },
+        unitsSoldChange: 25,
+        revenueChange: 25
+      }
+    }
+  });
+});
+
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
 });
