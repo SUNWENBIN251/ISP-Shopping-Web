@@ -104,6 +104,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { getRecordPlaceholder } from '../utils/recordPlaceholder'
 import { getAlbumWithProducts } from '../services/albumService'
 import { getAlbumReviews, getAlbumAverageRating } from '../services/reviewService'
 
@@ -140,13 +141,22 @@ const getProductImage = (product) => {
   if (product.image_urls) {
     try {
       const images = typeof product.image_urls === 'string' ? JSON.parse(product.image_urls) : product.image_urls
-      if (images && images.length > 0) return images[0]
+      if (images && images.length > 0) {
+        const src = images[0]
+        if (typeof src === 'string' && (src.startsWith('data:image') || src.startsWith('http://') || src.startsWith('https://'))) {
+          return src
+        }
+      }
     } catch (e) {}
   }
-  return albumImage.value
+  return albumImage.value || getRecordPlaceholder(product?.id || 1)
 }
 
-const handleImageError = (e) => { e.target.src = albumImage.value }
+const handleImageError = (e) => {
+  if (e?.target?.dataset?.fallbackApplied) return
+  e.target.dataset.fallbackApplied = '1'
+  e.target.src = albumImage.value || getRecordPlaceholder(1)
+}
 
 // Load album data
 const loadAlbum = async () => {

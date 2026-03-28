@@ -20,7 +20,7 @@
         <!-- 左侧：商品大图 with navigation buttons -->
         <div class="product-image-section">
           <div class="main-image-wrapper">
-            <img :src="currentImage" :alt="productName" class="main-image" />
+            <img :src="currentImage" :alt="productName" class="main-image" @error="handleMainImageError" />
             
             <!-- Navigation buttons -->
             <div class="image-nav" v-if="productImages.length > 1">
@@ -83,6 +83,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { getRecordPlaceholder } from '../utils/recordPlaceholder'
 import { addToCart as addItemToCart } from '../services/cartService'
 import { getProduct } from '../services/productService'
 import { isAuthenticated } from '../services/authService'
@@ -110,7 +111,7 @@ const productDescription = ref('')
 const currentIndex = ref(0)
 const productImages = ref([])
 const currentImage = computed(() => {
-  return productImages.value[currentIndex.value] || ''
+  return productImages.value[currentIndex.value] || getRecordPlaceholder(productId.value || 1)
 })
 
 // Image navigation functions
@@ -194,15 +195,19 @@ const loadProduct = async () => {
     // Handle product images
     if (product.image_urls) {
       try {
-        productImages.value = typeof product.image_urls === 'string' 
-          ? JSON.parse(product.image_urls) 
+        const rawImages = typeof product.image_urls === 'string'
+          ? JSON.parse(product.image_urls)
           : product.image_urls
+        const usable = Array.isArray(rawImages)
+          ? rawImages.filter((src) => typeof src === 'string' && (src.startsWith('data:image') || src.startsWith('http://') || src.startsWith('https://')))
+          : []
+        productImages.value = usable.length > 0 ? usable : [product.image || getRecordPlaceholder(productId.value || 1)]
       } catch (e) {
         console.error('Error parsing images:', e)
-        productImages.value = [product.image]
+        productImages.value = [product.image || getRecordPlaceholder(productId.value || 1)]
       }
     } else {
-      productImages.value = [product.image]
+      productImages.value = [product.image || getRecordPlaceholder(productId.value || 1)]
     }
     currentIndex.value = 0
     
@@ -212,6 +217,12 @@ const loadProduct = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const handleMainImageError = (e) => {
+  if (e?.target?.dataset?.fallbackApplied) return
+  e.target.dataset.fallbackApplied = '1'
+  e.target.src = getRecordPlaceholder(productId.value || 1)
 }
 
 onMounted(() => {

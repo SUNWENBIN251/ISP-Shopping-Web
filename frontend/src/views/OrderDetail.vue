@@ -104,12 +104,12 @@
               <div class="item-details">
                 <h3>{{ item.name }}</h3>
                 <p class="item-condition">{{ item.condition }}</p>
-                <p class="item-price">¥{{ item.price }} x {{ item.quantity }}</p>
+                <p class="item-price">¥{{ formatMoney(item.price) }} x {{ item.quantity }}</p>
                 <p class="item-id">Product ID: {{ item.id }}</p>
               </div>
               <div class="item-subtotal">
                 <span class="subtotal-label">{{ $t('orderDetail.subtotal') }}:</span>
-                <span class="subtotal-value">¥{{ item.price * item.quantity }}</span>
+                <span class="subtotal-value">¥{{ formatMoney(toNumber(item.price) * toNumber(item.quantity)) }}</span>
               </div>
             </div>
           </div>
@@ -119,15 +119,15 @@
         <div class="summary-card">
           <div class="summary-row">
             <span>{{ $t('orderDetail.subtotal') }}:</span>
-            <span>¥{{ order.subtotal || 0 }}</span>
+            <span>¥{{ formatMoney(order.subtotal || 0) }}</span>
           </div>
           <div class="summary-row">
             <span>{{ $t('orderDetail.shipping') }}:</span>
-            <span>¥{{ order.shipping_cost || 0 }}</span>
+            <span>¥{{ formatMoney(order.shipping_cost || 0) }}</span>
           </div>
           <div class="summary-row total">
             <span>{{ $t('orderDetail.total') }}:</span>
-            <span class="total-price">¥{{ (order.subtotal || 0) + (order.shipping_cost || 0) }}</span>
+            <span class="total-price">¥{{ formatMoney(toNumber(order.subtotal || 0) + toNumber(order.shipping_cost || 0)) }}</span>
           </div>
         </div>
 
@@ -254,6 +254,13 @@ const submitting = ref(false)
 const reviewedProducts = ref(new Set())
 const productRatings = reactive({})
 const productComments = reactive({})
+
+const toNumber = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+const formatMoney = (v) => toNumber(v).toFixed(2)
 
 const formatDateTime = (dateString) => {
   if (!dateString) return '-'

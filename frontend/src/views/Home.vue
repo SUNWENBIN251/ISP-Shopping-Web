@@ -136,6 +136,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getAlbums } from '../services/albumService'
 import { getForumMessages } from '../services/forumService'
+import { getRecordPlaceholder } from '../utils/recordPlaceholder'
 
 const { t } = useI18n()
 
@@ -243,36 +244,6 @@ const formatTime = (timestamp) => {
 // Handle image load error
 const handleImageError = (e) => {
   e.target.src = getRecordPlaceholder(1)
-}
-
-// 生成唱片封面占位图（SVG）
-const getRecordPlaceholder = (id) => {
-  const colors = [
-    '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d',
-    '#ef4444', '#f87171', '#fca5a5', '#fecaca',
-    '#1f2937', '#374151', '#4b5563', '#6b7280',
-    '#111827', '#1f2937', '#374151', '#4b5563'
-  ]
-  const color = colors[(id || 1) % colors.length]
-  const color2 = colors[((id || 1) + 1) % colors.length]
-  
-  const svg = `
-    <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="grad${id || 1}" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
-          <stop offset="100%" style="stop-color:${color2};stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect width="300" height="300" fill="url(#grad${id || 1})"/>
-      <circle cx="150" cy="150" r="80" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
-      <circle cx="150" cy="150" r="50" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-      <circle cx="150" cy="150" r="20" fill="rgba(255,255,255,0.4)"/>
-      <text x="150" y="200" font-family="Arial, sans-serif" font-size="24" fill="rgba(255,255,255,0.8)" text-anchor="middle" font-weight="bold">💿</text>
-    </svg>
-  `.trim()
-  
-  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
 }
 
 // 检测设备类型

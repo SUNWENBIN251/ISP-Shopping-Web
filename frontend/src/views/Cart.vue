@@ -42,6 +42,7 @@
             </div>
             <div class="header-col product-col">{{ $t('cart.product') }}</div>
             <div class="header-col price-col">{{ $t('cart.price') }}</div>
+            <div class="header-col qty-col">{{ $t('cart.quantity') }}</div>
             <div class="header-col action-col">{{ $t('cart.action') }}</div>
           </div>
 
@@ -57,15 +58,22 @@
                 :checked="selectedItems.has(item.id)"
                 @change="toggleSelect(item.id)"
                 class="item-checkbox"
+                :disabled="isSoldOut(item)"
               />
             </div>
 
             <div class="item-col product-col">
-              <div class="product-info">
-                <img :src="item.image || getPlaceholder()" :alt="item.name" class="product-image" />
+              <div class="product-info clickable" @click="goProduct(item.id)">
+                <img
+                  :src="item.image || getRecordPlaceholder(item.id)"
+                  :alt="item.name"
+                  class="product-image"
+                  @error="(e) => (e.target.src = getRecordPlaceholder(item.id))"
+                />
                 <div class="product-details">
                   <h3 class="product-name">{{ item.name }}</h3>
                   <p class="product-condition">{{ item.condition }}</p>
+                  <p v-if="isSoldOut(item)" class="sold-out">已售罄</p>
                 </div>
               </div>
             </div>
@@ -74,12 +82,25 @@
               <span class="price">¥{{ item.price.toFixed(2) }}</span>
             </div>
 
+            <div class="item-col qty-col">
+              <select
+                class="qty-select"
+                :value="typeof item.quantity === 'number' ? item.quantity : (selectedItems.has(item.id) ? 1 : 0)"
+                @change="(e) => setQty(item, e.target.value)"
+                :disabled="isSoldOut(item)"
+                :title="$t('cart.quantity')"
+              >
+                <option :value="0">0</option>
+                <option :value="1">1</option>
+              </select>
+            </div>
+
             <div class="item-col action-col">
               <button
                 class="buy-now-btn"
                 @click="buyNow(item.id, item.name, item.price, item.condition, item.image, item.artist)"
                 :title="$t('cart.buyNow')"
-                :disabled="isLoading"
+                :disabled="isLoading || isSoldOut(item)"
               >
                 🛒 {{ $t('cart.buyNow') }}
               </button>
@@ -134,10 +155,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { 
-  getCart, 
-  removeFromCart 
-} from '../services/cartService'
+import { getRecordPlaceholder } from '../utils/recordPlaceholder'
+import { getCart, removeFromCart, updateCartQuantity } from '../services/cartService'
 import { isAuthenticated } from '../services/authService'
 import { setCheckoutDraft } from '../services/orderService'
 
@@ -149,20 +168,27 @@ const isLoading = ref(false)
 const error = ref(null)
 const selectedItems = ref(new Set()) // 选中的商品ID集合
 
+const isSoldOut = (item) => item?.is_active === 0
+
 // 计算总价（仅计算选中的商品）
 const selectedPrice = computed(() => {
-  const selected = cartItems.value.filter(item => selectedItems.value.has(item.id))
+  const selected = cartItems.value.filter(
+    (item) => selectedItems.value.has(item.id) && item.quantity === 1 && !isSoldOut(item)
+  )
   return selected.reduce((sum, item) => sum + item.price, 0)
 })
 
 // 计算全选状态
 const allSelected = computed(() => {
-  if (cartItems.value.length === 0) return false
-  return selectedItems.value.size === cartItems.value.length
+  const selectable = cartItems.value.filter((it) => !isSoldOut(it))
+  if (selectable.length === 0) return false
+  return selectedItems.value.size === selectable.length
 })
 
 // 切换商品选中状态
 const toggleSelect = (itemId) => {
+  const item = cartItems.value.find((it) => it.id === itemId)
+  if (item && isSoldOut(item)) return
   if (selectedItems.value.has(itemId)) {
     selectedItems.value.delete(itemId)
   } else {
@@ -177,8 +203,40 @@ const toggleSelectAll = () => {
     selectedItems.value.clear()
   } else {
     // 全选：添加所有商品ID
-    cartItems.value.forEach(item => selectedItems.value.add(item.id))
+    cartItems.value.forEach((item) => {
+      if (!isSoldOut(item)) selectedItems.value.add(item.id)
+    })
   }
+}
+
+const setQty = (item, value) => {
+  const v = parseInt(value, 10)
+  if (Number.isNaN(v)) return
+  if (item && isSoldOut(item)) return
+
+  // Persist to backend (0 removes; 1 keeps)
+  isLoading.value = true
+  updateCartQuantity(item.id, v)
+    .then((res) => {
+      if (!res?.success) {
+        alert(res?.error || 'Failed to update quantity')
+        return
+      }
+      // reflect local state
+      item.quantity = v
+      if (v === 0) {
+        selectedItems.value.delete(item.id)
+      } else {
+        selectedItems.value.add(item.id)
+      }
+    })
+    .finally(() => {
+      isLoading.value = false
+    })
+}
+
+const goProduct = (productId) => {
+  router.push(`/product/${productId}`)
 }
 
 // 单个商品立即购买
@@ -197,7 +255,7 @@ const buyNow = (itemId, itemName, price, condition, image, artist) => {
       quantity: 1,
       name: itemName,
       artist: artist || '',
-      image: image || getPlaceholder(),
+      image: image || getRecordPlaceholder(itemId),
       condition: condition
     }]
   }
@@ -214,7 +272,9 @@ const buySelected = () => {
     return
   }
 
-  const selectedCartItems = cartItems.value.filter(item => selectedItems.value.has(item.id))
+  const selectedCartItems = cartItems.value.filter(
+    (item) => selectedItems.value.has(item.id) && item.quantity === 1 && !isSoldOut(item)
+  )
 
   if (selectedCartItems.length === 0) {
     alert('Please select an item.')
@@ -230,7 +290,7 @@ const buySelected = () => {
       quantity: 1,
       name: item.name,
       artist: item.artist || '',
-      image: item.image || getPlaceholder(),
+      image: item.image || getRecordPlaceholder(item.id),
       condition: item.condition
     }))
   }
@@ -249,8 +309,12 @@ const loadCart = async () => {
   try {
     cartItems.value = await getCart()
 
-    // Filter out any inactive items that might have slipped through
-    cartItems.value = cartItems.value.filter(item => item.is_active !== false)
+    // Sync selection with quantity (0~1); sold-out items can never be selected
+    cartItems.value.forEach((it) => {
+      const q = typeof it.quantity === 'number' ? it.quantity : Number(it.quantity ?? 1)
+      it.quantity = q
+      if (!isSoldOut(it) && q === 1) selectedItems.value.add(it.id)
+    })
 
     console.log('Cart loaded:', cartItems.value)
   } catch (err) {
@@ -284,24 +348,12 @@ const handleCheckout = () => {
     router.push('/login')
     return
   }
-  setCheckoutDraft({
-    source: 'cart',
-    items: cartItems.value.map((it) => ({
-      product_id: it.id,
-      price_at_purchase: it.price,
-      quantity: 1,
-      name: it.name,
-      artist: it.artist,
-      image: it.image,
-      condition: it.condition
-    }))
+  // "Buy all" respects unique-item quantity (0~1): set all active items to 1 then checkout.
+  selectedItems.value.clear()
+  cartItems.value.forEach((it) => {
+    if (!isSoldOut(it)) selectedItems.value.add(it.id)
   })
-  router.push('/checkout')
-}
-
-// 获取占位图
-const getPlaceholder = () => {
-  return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZTJlMmUyIi8+PHRleHQgeD0iMTYiIHk9IjQ1IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='
+  buySelected()
 }
 
 // 监听购物车更新事件
@@ -439,7 +491,7 @@ onUnmounted(() => {
 
 .cart-header {
   display: grid;
-  grid-template-columns: auto 2fr 1fr 1.5fr;
+  grid-template-columns: auto 2fr 1fr 0.8fr 1.5fr;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
   background: var(--color-primary);
@@ -450,7 +502,7 @@ onUnmounted(() => {
 
 .cart-item {
   display: grid;
-  grid-template-columns: auto 2fr 1fr 1.5fr;
+  grid-template-columns: auto 2fr 1fr 0.8fr 1.5fr;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
@@ -500,6 +552,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.product-info.clickable {
+  cursor: pointer;
+}
+
+.sold-out {
+  margin: var(--spacing-xs) 0 0 0;
+  color: var(--color-error);
+  font-weight: 800;
+  font-size: var(--font-size-xs);
+}
+
+.qty-select {
+  width: 64px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background: var(--color-bg);
 }
 
 .product-image {

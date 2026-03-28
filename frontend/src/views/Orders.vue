@@ -90,7 +90,7 @@
               <div class="item-details">
                 <h4>{{ item.name }}</h4>
                 <p class="item-condition">{{ item.condition }}</p>
-                <p class="item-price">¥{{ item.price }}</p>
+                <p class="item-price">¥{{ formatMoney(item.price) }}</p>
               </div>
               <div class="item-quantity">x{{ item.quantity }}</div>
             </div>
@@ -100,15 +100,15 @@
             <div class="order-totals">
               <div class="totals-row">
                 <span>{{ $t('orders.subtotal') }}:</span>
-                <span>¥{{ calculateSubtotal(order.items) }}</span>
+                <span>¥{{ formatMoney(calculateSubtotal(order.items)) }}</span>
               </div>
               <div class="totals-row">
                 <span>{{ $t('orders.shipping') }}:</span>
-                <span>¥{{ calculateShipping(order.items) }}</span>
+                <span>¥{{ formatMoney(calculateShipping(order.items)) }}</span>
               </div>
               <div class="totals-row total">
                 <span>{{ $t('orders.total') }}:</span>
-                <span class="total-price">¥{{ calculateTotal(order.items) }}</span>
+                <span class="total-price">¥{{ formatMoney(calculateTotal(order.items)) }}</span>
               </div>
             </div>
             <div class="order-actions">
@@ -152,6 +152,13 @@ const { t } = useI18n()
 const orders = ref([])
 const isLoading = ref(true)
 const error = ref(null)
+
+const toNumber = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+const formatMoney = (v) => toNumber(v).toFixed(2)
 
 // Filter state 
 const statusFilter = ref('all')
@@ -226,7 +233,7 @@ const loadOrders = async () => {
 // Calculate subtotal from items
 const calculateSubtotal = (items) => {
   if (!items) return 0
-  return items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  return items.reduce((sum, item) => sum + (toNumber(item.price) * toNumber(item.quantity)), 0)
 }
 
 // Calculate shipping (free over 500, otherwise 50)

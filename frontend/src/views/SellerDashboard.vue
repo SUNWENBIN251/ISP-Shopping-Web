@@ -166,7 +166,12 @@
           <div v-for="album in filteredAlbums" :key="album.album_id" class="album-card">
             <!-- Album Header -->
             <div class="album-header">
-              <img :src="album.cover_image_url" :alt="album.title" class="album-cover">
+              <img
+                :src="album.cover_image_url || getRecordPlaceholder(album.album_id)"
+                :alt="album.title"
+                class="album-cover"
+                @error="(e) => (e.target.src = getRecordPlaceholder(album.album_id))"
+              >
               <div class="album-info">
                 <h3>{{ album.title }}</h3>
                 <p>{{ album.artist }}</p>
@@ -554,7 +559,7 @@
                     <div class="album-cards">
                       <div v-for="album in reports.weeklyComparison.albumRanking.bestSelling" :key="album.album_id" class="album-card">
                         <div class="album-cover">
-                          <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
+                          <img :src="album.cover_image_url || getRecordPlaceholder(album.album_id)" :alt="album.title" @error="handleImageError">
                         </div>
                         <div class="album-info">
                           <div class="album-title">{{ album.title }}</div>
@@ -579,7 +584,7 @@
                     <div class="album-cards">
                       <div v-for="album in reports.weeklyComparison.albumRanking.worstSelling" :key="album.album_id" class="album-card">
                         <div class="album-cover">
-                          <img :src="album.cover_image_url || 'https://via.placeholder.com/60x60?text=No+Cover'" :alt="album.title" @error="handleImageError">
+                          <img :src="album.cover_image_url || getRecordPlaceholder(album.album_id)" :alt="album.title" @error="handleImageError">
                         </div>
                         <div class="album-info">
                           <div class="album-title">{{ album.title }}</div>
@@ -827,6 +832,7 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Chart from 'chart.js/auto'
+import { getRecordPlaceholder } from '../utils/recordPlaceholder'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -991,7 +997,7 @@ const formatDate = (dateString) => {
 
 // Helper: Handle image error
 const handleImageError = (e) => {
-  e.target.src = 'https://via.placeholder.com/50?text=No+Image'
+  e.target.src = getRecordPlaceholder(1)
 }
 
 // Helper: Get CSS class for change indicator
@@ -1736,13 +1742,12 @@ const saveProduct = async () => {
     })
     
     if (response.ok) {
+      const albumIdToRefresh = selectedAlbum.value?.album_id || productForm.value.album_id
       alert(editingProduct.value ? 'Product updated!' : 'Product added!')
       closeProductModal()
       
       // Reload products for this album
-      if (selectedAlbum.value) {
-        await loadAlbumProducts(selectedAlbum.value.album_id)
-      }
+      if (albumIdToRefresh) await loadAlbumProducts(albumIdToRefresh)
     } else {
       const error = await response.json().catch(() => ({ error: 'Failed to save product' }))
       alert('Error: ' + (error.error || 'Failed to save product'))

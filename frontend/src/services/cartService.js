@@ -24,13 +24,39 @@ export const getCart = async () => {
         image: item.image,
         condition: item.condition,
         price: item.price,
-        is_active: item.is_active
+        is_active: item.is_active,
+        quantity: typeof item.quantity === 'number' ? item.quantity : Number(item.quantity ?? 1)
       }))
     }
     return []
   } catch (error) {
     console.error('Failed to fetch cart:', error)
     return []
+  }
+}
+
+// Update cart quantity (unique item: 0 or 1)
+export const updateCartQuantity = async (productId, quantity) => {
+  if (!isAuthenticated()) {
+    window.location.href = '/login'
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  try {
+    const response = await apiCall('/cart/update', {
+      method: 'PUT',
+      body: JSON.stringify({ product_id: productId, quantity })
+    })
+
+    if (response && response.success) {
+      window.dispatchEvent(new Event('cartUpdated'))
+      return { success: true }
+    }
+
+    return { success: false, error: response.error || 'Failed to update cart quantity' }
+  } catch (error) {
+    console.error('Update cart quantity error:', error)
+    return { success: false, error: error.message }
   }
 }
 

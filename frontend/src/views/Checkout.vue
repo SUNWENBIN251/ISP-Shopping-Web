@@ -190,7 +190,7 @@
                   <span class="item-condition">{{ item.condition }}</span>
                 </div>
                 <div class="item-price">
-                  <span class="item-total">¥{{ (item.price || 0).toFixed(2) }}</span>
+                  <span class="item-total">¥{{ formatMoney(item.price || 0) }}</span>
                 </div>
               </div>
             </div>
@@ -198,15 +198,15 @@
             <div class="summary-totals">
               <div class="summary-row">
                 <span>{{ $t('checkout.subtotal') }}</span>
-                <span>¥{{ subtotal.toFixed(2) }}</span>
+                <span>¥{{ formatMoney(subtotal) }}</span>
               </div>
               <div class="summary-row">
                 <span>{{ $t('checkout.shipping') }}</span>
-                <span>¥{{ shipping.toFixed(2) }}</span>
+                <span>¥{{ formatMoney(shipping) }}</span>
               </div>
               <div class="summary-row total">
                 <span>{{ $t('checkout.total') }}</span>
-                <span class="total-price">¥{{ total.toFixed(2) }}</span>
+                <span class="total-price">¥{{ formatMoney(total) }}</span>
               </div>
             </div>
 
@@ -321,6 +321,13 @@ const shipping = computed(() => {
 const total = computed(() => {
   return subtotal.value + shipping.value
 })
+
+const toNumber = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+const formatMoney = (v) => toNumber(v).toFixed(2)
 
 // Form validation
 const isFormValid = computed(() => {

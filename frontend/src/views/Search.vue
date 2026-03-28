@@ -59,7 +59,12 @@
             <div v-for="album in paginatedAlbums" :key="album.album_id" class="album-card">
               <router-link :to="`/album/${album.album_id}`" class="album-link">
                 <div class="album-image">
-                  <img v-if="album.cover_image_url" :src="album.cover_image_url" :alt="album.title" />
+                  <img
+                    v-if="album.cover_image_url"
+                    :src="album.cover_image_url || getRecordPlaceholder(album.album_id)"
+                    :alt="album.title"
+                    @error="handleAlbumImageError"
+                  />
                   <div v-else class="no-image">
                     {{ album.title?.charAt(0) || '💿' }}
                   </div>
@@ -112,7 +117,12 @@
             <div v-for="album in paginatedAlbums" :key="album.album_id" class="album-card">
               <router-link :to="`/album/${album.album_id}`" class="album-link">
                 <div class="album-image">
-                  <img v-if="album.cover_image_url" :src="album.cover_image_url" :alt="album.title" />
+                  <img
+                    v-if="album.cover_image_url"
+                    :src="album.cover_image_url || getRecordPlaceholder(album.album_id)"
+                    :alt="album.title"
+                    @error="handleAlbumImageError"
+                  />
                   <div v-else class="no-image">
                     {{ album.title?.charAt(0) || '💿' }}
                   </div>
@@ -169,6 +179,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { getRecordPlaceholder } from '../utils/recordPlaceholder'
 
 const route = useRoute()
 const router = useRouter()
@@ -334,6 +345,11 @@ const loadAllAlbums = async () => {
 const filterByCategory = (category) => {
   selectedCategory.value = category
   handleSearch()
+}
+
+const handleAlbumImageError = (e) => {
+  // Use the same placeholder style as Home.vue
+  e.target.src = getRecordPlaceholder(1)
 }
 
 // 从URL获取搜索参数

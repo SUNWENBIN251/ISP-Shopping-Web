@@ -28,6 +28,25 @@ const db = new sqlite3.Database(path.join(__dirname, 'database', 'record_store.d
 // Enable foreign keys
 db.run('PRAGMA foreign_keys = ON');
 
+// One-time migration: add `selected` column to Cart_Items (0/1)
+db.all("PRAGMA table_info('Cart_Items')", (err, columns) => {
+  if (err) {
+    console.error('Failed to inspect Cart_Items schema:', err);
+    return;
+  }
+  const hasSelected = Array.isArray(columns) && columns.some((c) => c?.name === 'selected');
+  if (hasSelected) return;
+
+  console.log('Migrating Cart_Items: adding selected column...');
+  db.run('ALTER TABLE Cart_Items ADD COLUMN selected INTEGER NOT NULL DEFAULT 1', (err2) => {
+    if (err2) {
+      console.error('Failed to add Cart_Items.selected column:', err2);
+      return;
+    }
+    console.log('Migration complete: Cart_Items.selected added.');
+  });
+});
+
 // ==================== AUTH MIDDLEWARE ====================
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -651,7 +670,8 @@ app.get('/api/cart', authenticateToken, (req, res) => {
         a.cover_image_url as image,
         p.price,
         p.condition,
-        p.is_active
+        p.is_active,
+        COALESCE(ci.selected, 1) as quantity
     FROM Cart_Items ci
     JOIN Products p ON ci.product_id = p.product_id
     JOIN Albums a ON p.album_id = a.album_id
@@ -662,9 +682,8 @@ app.get('/api/cart', authenticateToken, (req, res) => {
         console.error('Database error:', err);
         return res.status(500).json({ error: err.message });
       }
-      // Filter out inactive products
-      const activeItems = (items || []).filter(item => item.is_active === 1);
-      res.json(activeItems);
+      // Return all cart items, including inactive (sold out) ones
+      res.json(items || []);
     }
   );
 });
@@ -678,6 +697,7 @@ app.post('/api/cart/add', authenticateToken, (req, res) => {
   db.get('SELECT * FROM Products WHERE product_id = ?', [product_id], (err, product) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!product) return res.status(404).json({ error: 'Product not found' });
+    if (product.is_active === 0) return res.status(400).json({ error: 'Product already sold' });
     
     // Check if already in cart
     db.get(
@@ -732,6 +752,51 @@ app.delete('/api/cart/clear', authenticateToken, (req, res) => {
   );
 });
 
+// Update cart quantity (unique items: 0 or 1)
+app.put('/api/cart/update', authenticateToken, (req, res) => {
+  const { product_id, quantity } = req.body;
+  const userId = req.user.userId;
+
+  if (!product_id) return res.status(400).json({ error: 'product_id required' });
+  const q = parseInt(quantity, 10);
+  if (![0, 1].includes(q)) return res.status(400).json({ error: 'quantity must be 0 or 1' });
+
+  if (q === 0) {
+    db.run(
+      'UPDATE Cart_Items SET selected = 0 WHERE user_id = ? AND product_id = ?',
+      [userId, product_id],
+      function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        return res.json({ success: true });
+      }
+    );
+    return;
+  }
+
+  // q === 1: ensure product is available then mark selected=1 (insert if missing)
+  db.get('SELECT is_active FROM Products WHERE product_id = ?', [product_id], (err, product) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    if (product.is_active === 0) return res.status(400).json({ error: 'Product already sold' });
+
+    db.run(
+      'INSERT OR IGNORE INTO Cart_Items (user_id, product_id, quantity, selected) VALUES (?, ?, 1, 1)',
+      [userId, product_id],
+      function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        db.run(
+          'UPDATE Cart_Items SET selected = 1 WHERE user_id = ? AND product_id = ?',
+          [userId, product_id],
+          function (err2) {
+            if (err2) return res.status(500).json({ error: err2.message });
+            return res.json({ success: true });
+          }
+        );
+      }
+    );
+  });
+});
+
 // Get cart summary
 app.get('/api/cart/summary', authenticateToken, (req, res) => {
   db.get(
@@ -739,7 +804,7 @@ app.get('/api/cart/summary', authenticateToken, (req, res) => {
         COUNT(*) as count
     FROM Cart_Items ci
     JOIN Products p ON ci.product_id = p.product_id
-    WHERE ci.user_id = ? AND p.is_active = 1`,
+    WHERE ci.user_id = ? AND COALESCE(ci.selected, 1) = 1 AND p.is_active = 1`,
     [req.user.userId],
     (err, summary) => {
       if (err) {
@@ -813,7 +878,7 @@ app.post('/api/orders/create', authenticateToken, (req, res) => {
         `SELECT ci.product_id, p.price
         FROM Cart_Items ci
         JOIN Products p ON ci.product_id = p.product_id
-        WHERE ci.user_id = ?`,
+        WHERE ci.user_id = ? AND COALESCE(ci.selected, 1) = 1`,
         [userId],
         (err, cartItems) => {
           if (err || !cartItems || cartItems.length === 0) {
