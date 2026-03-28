@@ -55,6 +55,62 @@ npm run preview
 | `getCartTotal()` | 获取购物车总价 | 可由API返回或前端计算 | 当前前端计算 |
 | `initCartWithMockData()` | 初始化测试数据 | 仅用于开发测试 | 开发完成后可删除 |
 
+### 订单 / 结算相关（假数据）
+
+**文件位置**：
+- `src/services/orderService.js`（订单与结算的假数据存储/读写）
+- `src/views/Checkout.vue`（下单确认页：确认数量、选择支付方式、填写收件地址）
+- `src/views/Orders.vue`（订单列表）
+- `src/views/OrderDetail.vue`（订单详情）
+
+**本地存储（localStorage）**：
+| Key | 说明 | 预计替换的接口 |
+| --- | --- | --- |
+| `mock_checkout_draft_v1` | 结算页草稿（从购物车/商品详情跳转时写入） | （通常不需要后端存储） |
+| `mock_order_db_v1` | 订单与订单明细的假数据库（orders + orderItems） | `GET /api/orders`、`GET /api/orders/:id`、`POST /api/orders/checkout` |
+
+**数据结构（用于对齐后端表设计）**：
+- `order`（订单头）：`user_id`、`total_amount`、`status`、`shipping_address`、`payment_method`、`transaction_id`、`paid_at`、`created_at`、`order_id`
+- `order_item`（订单行）：`order_id`、`price_at_purchase`、`product_id`、`order_item_id`（当前前端为了页面展示，额外带了 `quantity/name/artist/image/condition` 等字段，后续接 API 时可移除）
+
+**页面跳转入口**：
+- 顶部导航：购物车与登录之间新增“我的订单”入口（未登录会跳转登录）
+- `Cart.vue`：点击“去结算”进入 `Checkout.vue`
+- `ProductDetail.vue`：新增“立即购买”按钮进入 `Checkout.vue`
+
+**孤品约束（重要）**：
+- 本项目中每个 `product` 为孤品，结算页数量固定为 **1**，不可调整；后续接入后端时也应保持该约束（`order_item.quantity` 恒为 1）。
+
+### 评论 / 评价相关（AlbumDetail.vue，假数据）
+
+**业务规则（重要）**：
+- 评价入口在 **专辑详情页**（`AlbumDetail.vue`），但评价对象是 **SKU（Products.product_id）**。
+- 只有**购买过该专辑下任一 SKU 的用户**，才允许发表评价；且同一用户对同一 SKU **只能评价一次**（对齐后端 `Reviews` 的唯一约束）。
+
+**文件位置**：
+- `src/views/AlbumDetail.vue`（评价区 UI：打星、购买信息、商家回复展示）
+- `src/services/reviewService.js`（评价假数据存储）
+- `src/services/orderService.js`（读取本地订单，判断“已购可评”）
+
+**本地存储（localStorage）**：
+| Key | 说明 | 预计替换的接口 |
+| --- | --- | --- |
+| `mock_album_reviews_v1` | 专辑详情页评价假数据（按 album_id 聚合，记录到 SKU 维度） | `GET /api/albums/:albumId/reviews`、`POST /api/products/:productId/reviews`、`POST /api/reviews/:reviewId/reply` |
+
+**后端表字段映射（对齐 schema.sql）**：
+- `Reviews`: `review_id`、`user_id`、`product_id`、`rating`、`comment`、`merchant_reply`、`reply_at`、`created_at`
+
+**建议后端接口（后续替换假数据用，均建议鉴权）**：
+- `GET /api/orders`：返回当前登录用户的订单列表（对应 `Orders` 表）
+- `GET /api/orders/:orderId`：返回订单头 + 明细（对应 `Orders` + `Order_Items`）
+- `POST /api/orders/checkout`：创建订单（写入 `Orders` + `Order_Items`，并清空购物车）
+- `GET /api/users/me/purchases?albumId=:albumId`：返回“我在该专辑下买过哪些 SKU”的记录，用于 **已购可评** 校验与展示“什么时候买的/买的 SKU 类型”
+  - 关键返回字段建议包含：`product_id`、`condition`、`price_at_purchase`、`purchased_at`（来自 `Orders.created_at`）
+- `GET /api/albums/:albumId/reviews`：获取该专辑的评价列表（按 `product_id` 聚合展示也可）
+- `GET /api/products/:productId/reviews`：获取某个 SKU 的评价列表（如果前端未来要按 SKU 筛选）
+- `POST /api/products/:productId/reviews`：提交评价（后端需校验当前用户是否购买过该 `productId`，并遵守 `UNIQUE(user_id, product_id)`）
+- `POST /api/reviews/:reviewId/reply`：商家回复评价（写入 `merchant_reply` + `reply_at`，需校验商家身份）
+
 ### 主页（Home.vue）
 
 **文件位置**：`src/views/Home.vue`

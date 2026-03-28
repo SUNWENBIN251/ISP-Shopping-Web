@@ -22,6 +22,11 @@ const routes = [
     component: () => import('../views/ForgotPassword.vue')
   },
   {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/ResetPasswordPage.vue')
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('../views/Profile.vue'),
@@ -80,13 +85,25 @@ const routes = [
   {
     path: '/address',
     name: 'Address',
-    component: () => import('../views/Address.vue'),
+    component: () => import('../views/Addresses.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/review/:productId',
     name: 'Review',
     component: () => import('../views/Review.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/orders',
+    name: 'Orders',
+    component: () => import('../views/Orders.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/order/:id',
+    name: 'OrderDetail',
+    component: () => import('../views/OrderDetail.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -103,6 +120,22 @@ const routes = [
     path: '/about',
     name: 'About',
     component: () => import('../views/About.vue')
+  },
+  {
+    path: '/album/:id',
+    name: 'AlbumDetail',
+    component: () => import('../views/AlbumDetail.vue')
+  },
+  {
+    path: '/addresses',
+    name: 'Addresses',
+    component: () => import('../views/Addresses.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/album/:id/reviews',
+    name: 'AlbumReviews',
+    component: () => import('../views/Review.vue')
   }
 ]
 
@@ -113,13 +146,17 @@ const router = createRouter({
 
 // 路由守卫（待实现）
 router.beforeEach((to, from, next) => {
-  // TODO: 实现登录验证逻辑
-  // if (to.meta.requiresAuth && !isAuthenticated()) {
-  //   next('/login')
-  // } else {
-  //   next()
-  // }
-  next()
+  const isAuthenticated = !!localStorage.getItem('token')
+  const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
+  const isSeller = user.role === 'seller' || user.role === 'admin'
+  
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next('/login')
+  } else if (to.meta.requiresSeller && !isSeller) {
+    next('/')
+  } else {
+    next()
+  }
 })
 
 export default router

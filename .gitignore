@@ -137,3 +137,25 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ==================== DATABASE - PREVENT CONFLICTS ====================
+
+# Ignore the actual database file (everyone has their own local copy)
+*.db
+*.sqlite
+*.sqlite3
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+
+# But keep the schema (structure only)
+!database/schema.sql
+
+# Ignore database temporary files
+*.db-journal
+*.db-wal
+*.db-shm
+*-wal
+*-shm
+
+# ==================== END DATABASE RULES ====================

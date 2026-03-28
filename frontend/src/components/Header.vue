@@ -28,32 +28,46 @@
             <div 
               class="dropdown-item" 
               :class="{ active: currentLocale === 'zh-CN' }"
-              @click="changeLanguage('zh-CN')"
+              @click.stop="changeLanguage('zh-CN')"
             >
               {{ $t('language.zh-CN') }}
             </div>
             <div 
               class="dropdown-item" 
               :class="{ active: currentLocale === 'zh-TW' }"
-              @click="changeLanguage('zh-TW')"
+              @click.stop="changeLanguage('zh-TW')"
             >
               {{ $t('language.zh-TW') }}
             </div>
             <div 
               class="dropdown-item" 
               :class="{ active: currentLocale === 'en' }"
-              @click="changeLanguage('en')"
+              @click.stop="changeLanguage('en')"
             >
               {{ $t('language.en') }}
             </div>
           </div>
         </div>
 
-        <!-- 购物车 -->
-        <div class="action-item" @click="$router.push('/cart')">
+        <!-- 购物车 - Hide for sellers -->
+        <div v-if="!isSeller" class="action-item" @click="goToCart">
           <span class="action-icon">🛒</span>
           <span class="action-text">{{ $t('header.cart') }}</span>
           <span class="cart-badge" v-if="cartCount > 0">{{ cartCount }}</span>
+        </div>
+
+        <!-- 我的订单 - Show for customers only -->
+        <div v-if="!isSeller" class="action-item" @click="goToOrders">
+          <span class="action-icon">🧾</span>
+          <span class="action-text">{{ $t('header.orders') }}</span>
+        </div>
+
+        <!-- 关怀模式 - customer only -->
+        <div v-if="showCareModeToggle" class="action-item" @click="handleToggleCareMode">
+          <span class="action-icon">🧓</span>
+          <span class="action-text">
+            {{ $t('header.careMode') }} {{ careModeEnabled ? $t('header.careModeOn') : $t('header.careModeOff') }}
+          </span>
         </div>
 
         <!-- 用户菜单 -->
@@ -66,8 +80,9 @@
           <span class="action-text">{{ username || $t('header.user') }}</span>
           <div class="user-dropdown" v-if="showUserMenu">
             <div class="dropdown-item" @click="$router.push('/profile')">{{ $t('header.profile') }}</div>
-            <div class="dropdown-item" @click="$router.push('/orders')">{{ $t('header.orders') }}</div>
-            <div class="dropdown-item" @click="$router.push('/wishlist')">{{ $t('header.wishlist') }}</div>
+            <div class="dropdown-item" v-if="!isSeller" @click="$router.push('/addresses')">{{ $t('header.addresses') }}</div>
+            <div class="dropdown-item" v-if="!isSeller" @click="$router.push('/wishlist')">{{ $t('header.wishlist') }}</div>
+            <div class="dropdown-item" v-if="isSeller" @click="$router.push('/seller')">{{ $t('header.nav.sellerDashboard') }}</div>
             <div class="dropdown-divider"></div>
             <div class="dropdown-item" @click="handleLogout">{{ $t('header.logout') }}</div>
           </div>
@@ -82,6 +97,8 @@
           <router-link to="/" class="nav-item">{{ $t('header.nav.home') }}</router-link>
           <router-link to="/category" class="nav-item">{{ $t('header.nav.category') }}</router-link>
           <router-link to="/forum" class="nav-item">{{ $t('header.nav.forum') }}</router-link>
+          <!-- Add this line for seller dashboard -->
+          <router-link v-if="isSeller" to="/seller" class="nav-item">{{ $t('header.nav.sellerDashboard') }}</router-link>
           <router-link to="/help" class="nav-item">{{ $t('header.nav.help') }}</router-link>
           <router-link to="/about" class="nav-item">{{ $t('header.nav.about') }}</router-link>
         </div>
@@ -94,7 +111,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getCurrentUser, logout, getCartCount } from '../utils/auth'
+import { getCurrentUser, logout } from '../services/authService'
+import { getCartSummary } from '../services/cartService'
+import { careModeEnabled, toggleCareMode, ensureCareModeAllowed } from '../services/careModeService'
 
 const router = useRouter()
 const { locale, t } = useI18n()
@@ -105,78 +124,114 @@ const searchKeyword = ref('')
 // 用户状态
 const isLoggedIn = ref(false)
 const username = ref('')
+const userRole = ref('') 
+
 const cartCount = ref(0)
+const isSeller = ref(false)  // ADD THIS LINE
 
-// 用户菜单
+// 菜单状态
 const showUserMenu = ref(false)
-
-// 语言菜单
 const showLanguageMenu = ref(false)
-const currentLocale = computed(() => locale.value)
 
+// 语言相关
+const currentLocale = computed(() => locale.value)
 const currentLanguageText = computed(() => {
   return t(`language.${locale.value}`)
 })
 
+const showCareModeToggle = computed(() => {
+  return isLoggedIn.value && !isSeller.value
+})
+
+const handleToggleCareMode = () => {
+  if (!ensureCareModeAllowed()) return
+  toggleCareMode()
+}
+
+// Add this function with your other methods
+const goToOrders = () => {
+  if (!isLoggedIn.value) {
+    router.push('/login')
+    return
+  }
+  router.push('/orders')
+}
+
+const goToCart = () => {
+  if (!isLoggedIn.value) {
+    router.push('/login')
+    return
+  }
+  router.push('/cart')
+}
+
 // 更新用户状态
-const updateUserState = () => {
+const updateUserState = async () => {
   const user = getCurrentUser()
-  // 更新购物车数量（无论是否登录都显示）
-  cartCount.value = getCartCount()
+  
+  // 获取购物车数量
+  const summary = await getCartSummary()
+  cartCount.value = summary.count || 0
   
   if (user) {
     isLoggedIn.value = true
     username.value = user.name || user.username
+    userRole.value = user.role || 'customer'
+    isSeller.value = user.role === 'seller' || user.role === 'admin'  // Now this works with ref
+    // Care mode is customer only; enforce when role changes
+    ensureCareModeAllowed()
   } else {
     isLoggedIn.value = false
     username.value = ''
+    userRole.value = ''
+    isSeller.value = false  // Now this works with ref
+    ensureCareModeAllowed()
   }
 }
 
-// 监听storage变化（用于跨标签页同步）
-const handleStorageChange = (e) => {
-  if (e.key === 'currentUser' || e.key === 'cart') {
-    updateUserState()
-  }
-}
-
-// 监听购物车更新事件
-const handleCartUpdate = () => {
-  updateUserState()
-}
-
+// 处理搜索
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
     router.push({
       path: '/search',
-      query: { keyword: searchKeyword.value }
+      query: { q: searchKeyword.value }
     })
+    searchKeyword.value = ''
   }
 }
 
+// 切换用户菜单
 const toggleUserMenu = () => {
   showUserMenu.value = !showUserMenu.value
   showLanguageMenu.value = false
 }
 
+// 切换语言菜单
 const toggleLanguageMenu = () => {
   showLanguageMenu.value = !showLanguageMenu.value
   showUserMenu.value = false
 }
 
+// 切换语言
 const changeLanguage = (lang) => {
   locale.value = lang
   localStorage.setItem('locale', lang)
   showLanguageMenu.value = false
 }
 
+// 登出
+// 退出登录
 const handleLogout = () => {
-  logout()
-  updateUserState()
-  showUserMenu.value = false
-  // 触发自定义事件，通知其他组件
-  window.dispatchEvent(new Event('userStateChanged'))
-  router.push('/')
+  if (confirm(t('profile.logoutConfirm'))) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('currentUser')
+    isLoggedIn.value = false  // Add this line
+    username.value = ''       // Add this line
+    userRole.value = ''       // Add this line
+    isSeller.value = false    // Add this line
+    window.dispatchEvent(new Event('userStateChanged'))
+    router.push('/login')
+  }
 }
 
 // 点击外部关闭菜单
@@ -189,21 +244,26 @@ const handleClickOutside = (e) => {
   }
 }
 
+// 监听事件
+const handleUserStateChanged = () => {
+  updateUserState()
+}
+
+const handleCartUpdated = () => {
+  updateUserState()
+}
+
 onMounted(() => {
   updateUserState()
-  window.addEventListener('storage', handleStorageChange)
-  // 监听自定义事件（同标签页内登录/登出）
-  window.addEventListener('userStateChanged', updateUserState)
-  // 监听购物车更新事件
-  window.addEventListener('cartUpdated', handleCartUpdate)
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('userStateChanged', handleUserStateChanged)
+  window.addEventListener('cartUpdated', handleCartUpdated)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('storage', handleStorageChange)
-  window.removeEventListener('userStateChanged', updateUserState)
-  window.removeEventListener('cartUpdated', handleCartUpdate)
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('userStateChanged', handleUserStateChanged)
+  window.removeEventListener('cartUpdated', handleCartUpdated)
 })
 </script>
 
@@ -413,11 +473,6 @@ onUnmounted(() => {
 
   .action-text {
     display: none;
-  }
-
-  /* 移动端保留语言切换图标 */
-  .language-menu .action-icon {
-    display: block;
   }
 
   .nav-items {

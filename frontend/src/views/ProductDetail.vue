@@ -1,83 +1,84 @@
 <template>
   <div class="product-detail-page">
     <div class="container">
-      <div class="product-main">
-        <!-- 左侧：商品大图 -->
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>{{ $t('common.loading') }}</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="error" class="error-state">
+        <p class="error-message">{{ error }}</p>
+        <button @click="$router.push('/')" class="btn-primary">
+          {{ $t('common.goBack') }}
+        </button>
+      </div>
+
+      <!-- Product Content -->
+      <div v-else class="product-main">
+        <div class="care-only care-banner">
+          <div class="title">🧾 购买提示</div>
+          <div class="desc">
+            可以先加入购物车（🛒），也可以直接购买（💰）。每件都是孤品。
+          </div>
+        </div>
+        <!-- 左侧：商品大图 with navigation buttons -->
         <div class="product-image-section">
           <div class="main-image-wrapper">
-            <img :src="productImage" :alt="productName" class="main-image" />
+            <img :src="currentImage" :alt="productName" class="main-image" @error="handleMainImageError" />
+            
+            <!-- Navigation buttons -->
+            <div class="image-nav care-hide" v-if="productImages.length > 1">
+              <button class="nav-btn prev" @click="prevImage">‹</button>
+              <button class="nav-btn next" @click="nextImage">›</button>
+            </div>
+            
+            <!-- Image counter -->
+            <div class="image-counter care-hide" v-if="productImages.length > 1">
+              {{ currentIndex + 1 }} / {{ productImages.length }}
+            </div>
           </div>
         </div>
 
-        <!-- 右侧：成色选择和商品列表 -->
+        <!-- 右侧：商品信息 -->
         <div class="product-info-section">
           <h1 class="product-title">{{ productName }}</h1>
           
-          <!-- 成色类别选择 -->
-          <div class="condition-selector">
-            <h3 class="selector-title">{{ $t('productDetail.selectCondition') }}</h3>
-            <div class="condition-tabs">
-              <button
-                v-for="condition in conditions"
-                :key="condition.value"
-                class="condition-tab"
-                :class="{ active: selectedCondition === condition.value }"
-                @click="selectCondition(condition.value)"
-              >
-                {{ condition.label }}
-                <span class="item-count">({{ getConditionItemCount(condition.value) }})</span>
-              </button>
+          <!-- 艺术家信息 -->
+          <p class="product-artist">{{ productArtist }}</p>
+          
+          <!-- Product details - simplified -->
+          <div class="product-details-simple">
+            <div class="detail-row">
+              <span class="detail-label">{{ $t('productDetail.condition') }}:</span>
+              <span class="detail-value">{{ productCondition }}</span>
             </div>
-          </div>
-
-          <!-- 商品列表 -->
-          <div class="product-variants">
-            <h3 class="variants-title">{{ $t('productDetail.availableItems') }}</h3>
-            <div v-if="currentVariants.length === 0" class="no-variants">
-              {{ $t('productDetail.noItems') }}
+            <div class="detail-row">
+              <span class="detail-label">{{ $t('productDetail.price') }}:</span>
+              <span class="detail-value price">¥{{ productPrice.toFixed(2) }}</span>
             </div>
-            <div v-else class="variants-list">
-              <div
-                v-for="variant in currentVariants"
-                :key="variant.id"
-                class="variant-item"
-                :class="{ selected: selectedVariant?.id === variant.id }"
-                @click="selectVariant(variant)"
-              >
-                <div class="variant-info">
-                  <span class="variant-condition">{{ getConditionLabel(variant.condition) }}</span>
-                  <span class="variant-price">¥{{ variant.price.toFixed(2) }}</span>
-                </div>
-                <div class="variant-stock">
-                  <span v-if="variant.stock > 0" class="in-stock">
-                    {{ $t('productDetail.inStock') }} ({{ variant.stock }})
-                  </span>
-                  <span v-else class="out-of-stock">
-                    {{ $t('productDetail.outOfStock') }}
-                  </span>
-                </div>
-              </div>
+            <div class="detail-row description">
+              <span class="detail-label">{{ $t('productDetail.description') }}:</span>
+              <p class="detail-value">{{ productDescription }}</p>
             </div>
           </div>
 
           <!-- 操作按钮 -->
-          <div class="product-actions" v-if="selectedVariant">
+          <div class="product-actions" v-if="!isSeller">
             <button
               class="btn-add-cart"
               @click="addToCart"
-              :disabled="selectedVariant.stock === 0"
             >
               {{ $t('productDetail.addToCart') }}
             </button>
+            <button
+              class="btn-buy-now"
+              @click="buyNow"
+            >
+              {{ $t('productDetail.buyNow') }}
+            </button>
           </div>
-        </div>
-      </div>
-
-      <!-- 下方：商品描述 -->
-      <div class="product-description-section" v-if="selectedVariant">
-        <h2 class="description-title">{{ $t('productDetail.description') }}</h2>
-        <div class="description-content">
-          <p>{{ selectedVariant.description }}</p>
         </div>
       </div>
     </div>
@@ -88,194 +89,159 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { addToCart as addItemToCart } from '../utils/cart'
+import { getRecordPlaceholder } from '../utils/recordPlaceholder'
+import { addToCart as addItemToCart } from '../services/cartService'
+import { getProduct } from '../services/productService'
+import { isAuthenticated } from '../services/authService'
+import { setCheckoutDraft } from '../services/orderService'
+
+const isSeller = ref(false)
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
-// 商品基本信息
-const productId = computed(() => parseInt(route.params.id) || 1)
-const productName = ref('The Beatles - Abbey Road 黑胶唱片')
-const productImage = ref('')
+// Loading and error states
+const isLoading = ref(true)
+const error = ref(null)
 
-// 成色类别
-const conditions = [
-  { value: '99', label: '99新' },
-  { value: '85', label: '85新' },
-  { value: '75', label: '75新' }
-]
+// Product data - simplified
+const productId = computed(() => parseInt(route.params.id))
+const productName = ref('')
+const productArtist = ref('')
+const productCondition = ref('')
+const productPrice = ref(0)
+const productDescription = ref('')
 
-// 选中的成色
-const selectedCondition = ref('99')
-
-// 选中的商品变体
-const selectedVariant = ref(null)
-
-// 所有商品变体（假数据，后续从后端获取）
-const allVariants = ref([
-  // 99新
-  {
-    id: 1,
-    condition: '99',
-    price: 299.00,
-    stock: 3,
-    description: '这张99新的Abbey Road黑胶唱片保存得非常好，几乎没有任何使用痕迹。封面完整，唱片表面光滑如新，音质完美。适合收藏家和追求完美音质的音乐爱好者。'
-  },
-  {
-    id: 2,
-    condition: '99',
-    price: 289.00,
-    stock: 2,
-    description: '另一张99新的Abbey Road，品相极佳。原装内页完整，唱片无划痕，播放效果出色。这是收藏级别的品相，非常难得。'
-  },
-  {
-    id: 3,
-    condition: '99',
-    price: 279.00,
-    stock: 1,
-    description: '最后一张99新的Abbey Road，品相完美。原版封面，唱片状态极佳，适合作为收藏品保存。'
-  },
-  // 85新
-  {
-    id: 4,
-    condition: '85',
-    price: 199.00,
-    stock: 5,
-    description: '85新的Abbey Road，整体状态良好。封面有轻微使用痕迹，但整体完整。唱片有少量轻微划痕，但不影响播放，音质依然清晰。性价比很高。'
-  },
-  {
-    id: 5,
-    condition: '85',
-    price: 189.00,
-    stock: 4,
-    description: '另一张85新的Abbey Road，品相良好。封面边缘有轻微磨损，唱片表面有少量使用痕迹，但播放效果依然不错。适合日常聆听。'
-  },
-  {
-    id: 6,
-    condition: '85',
-    price: 179.00,
-    stock: 3,
-    description: '85新的Abbey Road，状态良好。封面有正常使用痕迹，唱片有轻微磨损，但音质清晰，适合喜欢经典音乐的朋友。'
-  },
-  {
-    id: 7,
-    condition: '85',
-    price: 169.00,
-    stock: 2,
-    description: '85新的Abbey Road，整体品相不错。封面有轻微折痕，唱片有少量划痕，但播放正常，音质良好。'
-  },
-  // 75新
-  {
-    id: 8,
-    condition: '75',
-    price: 129.00,
-    stock: 6,
-    description: '75新的Abbey Road，有明显的使用痕迹。封面有折痕和磨损，唱片表面有较多划痕，但依然可以正常播放。音质略有影响，但整体可听。适合预算有限的朋友。'
-  },
-  {
-    id: 9,
-    condition: '75',
-    price: 119.00,
-    stock: 5,
-    description: '另一张75新的Abbey Road，使用痕迹明显。封面有破损，唱片有较多划痕，播放时可能有轻微杂音，但整体可用。价格实惠。'
-  },
-  {
-    id: 10,
-    condition: '75',
-    price: 109.00,
-    stock: 4,
-    description: '75新的Abbey Road，品相一般。封面和唱片都有明显使用痕迹，有划痕和磨损，但可以播放。适合对品相要求不高的朋友。'
-  },
-  {
-    id: 11,
-    condition: '75',
-    price: 99.00,
-    stock: 3,
-    description: '75新的Abbey Road，状态一般。封面有破损，唱片有较多划痕，播放时可能有杂音，但价格便宜，适合入门收藏。'
-  },
-  {
-    id: 12,
-    condition: '75',
-    price: 89.00,
-    stock: 2,
-    description: '75新的Abbey Road，品相较差但可用。封面和唱片都有明显使用痕迹，有较多划痕，播放效果一般，但价格非常实惠。'
-  }
-])
-
-// 当前成色下的商品列表
-const currentVariants = computed(() => {
-  return allVariants.value.filter(v => v.condition === selectedCondition.value)
+// Image gallery
+const currentIndex = ref(0)
+const productImages = ref([])
+const currentImage = computed(() => {
+  return productImages.value[currentIndex.value] || getRecordPlaceholder(productId.value || 1)
 })
 
-// 生成商品大图（使用唱片占位图）
-const generateProductImage = () => {
-  const svg = `
-    <svg width="500" height="500" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#dc2626;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#b91c1c;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect width="500" height="500" fill="url(#grad)"/>
-      <circle cx="250" cy="250" r="130" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
-      <circle cx="250" cy="250" r="80" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-      <circle cx="250" cy="250" r="30" fill="rgba(255,255,255,0.4)"/>
-      <text x="250" y="350" font-family="Arial, sans-serif" font-size="60" fill="rgba(255,255,255,0.8)" text-anchor="middle" font-weight="bold">💿</text>
-    </svg>
-  `.trim()
-  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+// Image navigation functions
+const nextImage = () => {
+  if (productImages.value.length === 0) return
+  currentIndex.value = (currentIndex.value + 1) % productImages.value.length
 }
 
-// 选择成色
-const selectCondition = (condition) => {
-  selectedCondition.value = condition
-  selectedVariant.value = null // 切换成色时清空选中的商品
+const prevImage = () => {
+  if (productImages.value.length === 0) return
+  currentIndex.value = (currentIndex.value - 1 + productImages.value.length) % productImages.value.length
 }
 
-// 选择商品变体
-const selectVariant = (variant) => {
-  selectedVariant.value = variant
+// Add to cart
+const addToCart = async () => {
+  try {
+    const result = await addItemToCart(productId.value, 1)
+    if (result.success) {
+      alert(t('productDetail.addedToCart'))
+      window.dispatchEvent(new Event('cartUpdated'))
+    } else {
+      alert(t('productDetail.addToCartError'))
+    }
+  } catch (error) {
+    console.error('Failed to add to cart:', error)
+    alert(t('productDetail.addToCartError'))
+  }
 }
 
-// 获取成色标签
-const getConditionLabel = (condition) => {
-  const cond = conditions.find(c => c.value === condition)
-  return cond ? cond.label : condition
-}
-
-// 获取某个成色下的商品数量
-const getConditionItemCount = (condition) => {
-  return allVariants.value.filter(v => v.condition === condition).length
-}
-
-// 添加到购物车
-const addToCart = () => {
-  if (!selectedVariant.value) return
-  
-  const product = {
-    id: selectedVariant.value.id,
-    name: `${productName.value} - ${getConditionLabel(selectedVariant.value.condition)}`,
-    image: productImage.value,
-    price: selectedVariant.value.price
+// Buy Now
+const buyNow = () => {
+  if (!productId.value) {
+    alert('Product not found')
+    return
   }
   
-  addItemToCart(product, 1)
-  // 触发Header更新
-  window.dispatchEvent(new Event('cartUpdated'))
+  if (!isAuthenticated()) {
+    router.push('/login')
+    return
+  }
+
+  // Create checkout draft with just this product
+  const draft = {
+    source: 'product',
+    items: [
+      {
+        product_id: productId.value,
+        price_at_purchase: productPrice.value,
+        quantity: 1,
+        name: productName.value,
+        artist: productArtist.value,
+        image: currentImage.value || productImage.value,
+        condition: productCondition.value
+      }
+    ]
+  }
   
-  alert('已添加到购物车')
+  // Save to sessionStorage
+  sessionStorage.setItem('checkout_draft', JSON.stringify(draft))
+  
+  // Go to checkout
+  router.push('/checkout')
+}
+
+// Load product data from backend
+const loadProduct = async () => {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    console.log(`Loading product ID: ${productId.value}`)
+    const product = await getProduct(productId.value)
+    console.log('Product data:', product)
+    
+    productName.value = product.name
+    productArtist.value = product.artist
+    productCondition.value = product.condition
+    productPrice.value = product.price
+    productDescription.value = product.description || `${product.condition} condition copy`
+    
+    // Handle product images
+    if (product.image_urls) {
+      try {
+        const rawImages = typeof product.image_urls === 'string'
+          ? JSON.parse(product.image_urls)
+          : product.image_urls
+        const usable = Array.isArray(rawImages)
+          ? rawImages.filter((src) => typeof src === 'string' && (src.startsWith('data:image') || src.startsWith('http://') || src.startsWith('https://')))
+          : []
+        productImages.value = usable.length > 0 ? usable : [product.image || getRecordPlaceholder(productId.value || 1)]
+      } catch (e) {
+        console.error('Error parsing images:', e)
+        productImages.value = [product.image || getRecordPlaceholder(productId.value || 1)]
+      }
+    } else {
+      productImages.value = [product.image || getRecordPlaceholder(productId.value || 1)]
+    }
+    currentIndex.value = 0
+    
+  } catch (err) {
+    console.error('Failed to load product:', err)
+    error.value = t('common.loadError')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleMainImageError = (e) => {
+  if (e?.target?.dataset?.fallbackApplied) return
+  e.target.dataset.fallbackApplied = '1'
+  e.target.src = getRecordPlaceholder(productId.value || 1)
 }
 
 onMounted(() => {
-  // 生成商品大图
-  productImage.value = generateProductImage()
-  
-  // 默认选择第一个商品
-  if (currentVariants.value.length > 0) {
-    selectedVariant.value = currentVariants.value[0]
+  if (!productId.value) {
+    router.push('/')
+    return
   }
+  // Check if current user is a seller
+  const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
+  isSeller.value = user.role === 'seller' || user.role === 'admin'
+  console.log('Is seller:', isSeller.value)
+  
+  loadProduct()
 })
 </script>
 
@@ -286,6 +252,63 @@ onMounted(() => {
   background: #FDC1A7;
 }
 
+.loading-state {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border-radius: var(--border-radius-lg);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-state {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xxl);
+}
+
+.error-message {
+  color: var(--color-error);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.btn-primary {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  transition: background-color var(--transition-base);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
+}
+
 .product-main {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -293,7 +316,6 @@ onMounted(() => {
   margin-bottom: var(--spacing-xxl);
 }
 
-/* 左侧：商品大图 */
 .product-image-section {
   position: sticky;
   top: 100px;
@@ -301,6 +323,7 @@ onMounted(() => {
 }
 
 .main-image-wrapper {
+  position: relative;
   background: var(--color-bg);
   border-radius: var(--border-radius-lg);
   padding: var(--spacing-lg);
@@ -315,7 +338,56 @@ onMounted(() => {
   display: block;
 }
 
-/* 右侧：商品信息 */
+/* Navigation buttons */
+.image-nav {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 10px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.nav-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.nav-btn:hover {
+  background: var(--color-primary);
+  color: white;
+  transform: scale(1.1);
+}
+
+.image-counter {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 10;
+}
+
 .product-info-section {
   background: var(--color-bg);
   border-radius: var(--border-radius-lg);
@@ -326,137 +398,68 @@ onMounted(() => {
 .product-title {
   font-size: var(--font-size-xxxl);
   color: var(--color-primary);
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-sm);
   font-weight: bold;
 }
 
-/* 成色选择器 */
-.condition-selector {
-  margin-bottom: var(--spacing-xl);
-}
-
-.selector-title {
+.product-artist {
   font-size: var(--font-size-lg);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-md);
-  font-weight: bold;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.condition-tabs {
+/* Product details simple */
+.product-details-simple {
+  margin: var(--spacing-xl) 0;
+  padding: var(--spacing-lg) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detail-row {
   display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
+  margin-bottom: var(--spacing-md);
 }
 
-.condition-tab {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border: 2px solid var(--color-border);
-  background: var(--color-bg);
-  border-radius: var(--border-radius-md);
-  cursor: pointer;
-  font-size: var(--font-size-base);
-  color: var(--color-text-primary);
-  transition: all var(--transition-base);
+.detail-label {
+  width: 100px;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
-.condition-tab:hover {
-  border-color: var(--color-primary);
-  background: var(--color-accent);
-}
-
-.condition-tab.active {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.item-count {
-  font-size: var(--font-size-sm);
-  opacity: 0.8;
-}
-
-/* 商品变体列表 */
-.product-variants {
-  margin-bottom: var(--spacing-xl);
-}
-
-.variants-title {
-  font-size: var(--font-size-lg);
+.detail-value {
+  flex: 1;
   color: var(--color-text-primary);
-  margin-bottom: var(--spacing-md);
+}
+
+.detail-value.price {
+  color: var(--color-primary);
   font-weight: bold;
+  font-size: var(--font-size-xl);
 }
 
-.no-variants {
-  padding: var(--spacing-lg);
-  text-align: center;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-light);
-  border-radius: var(--border-radius-md);
-}
-
-.variants-list {
-  display: flex;
+.detail-row.description {
   flex-direction: column;
-  gap: var(--spacing-sm);
 }
 
-.variant-item {
-  padding: var(--spacing-md);
-  border: 2px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  background: var(--color-bg);
-}
-
-.variant-item:hover {
-  border-color: var(--color-primary);
-  background: var(--color-accent);
-  transform: translateX(4px);
-}
-
-.variant-item.selected {
-  border-color: var(--color-primary);
-  background: var(--color-accent);
-  box-shadow: var(--shadow-md);
-}
-
-.variant-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.detail-row.description .detail-label {
+  width: 100%;
   margin-bottom: var(--spacing-xs);
 }
 
-.variant-condition {
-  font-size: var(--font-size-base);
-  color: var(--color-text-primary);
-  font-weight: 500;
+.detail-row.description .detail-value {
+  line-height: 1.6;
+  margin: 0;
 }
 
-.variant-price {
-  font-size: var(--font-size-lg);
-  color: var(--color-primary);
-  font-weight: bold;
-}
-
-.variant-stock {
-  font-size: var(--font-size-sm);
-}
-
-.in-stock {
-  color: var(--color-success);
-}
-
-.out-of-stock {
-  color: var(--color-error);
-}
-
-/* 操作按钮 */
+/* Action buttons */
 .product-actions {
   margin-top: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .btn-add-cart {
@@ -478,38 +481,37 @@ onMounted(() => {
   box-shadow: var(--shadow-md);
 }
 
-.btn-add-cart:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 商品描述区域 */
-.product-description-section {
-  background: var(--color-bg);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-xl);
-  box-shadow: var(--shadow-md);
-  border-top: 4px solid var(--color-primary);
-}
-
-.description-title {
-  font-size: var(--font-size-xxl);
+.btn-buy-now {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-light);
   color: var(--color-primary);
-  margin-bottom: var(--spacing-lg);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-lg);
   font-weight: bold;
+  cursor: pointer;
+  transition: all var(--transition-base);
 }
 
-.description-content {
+.btn-buy-now:hover:not(:disabled) {
+  background: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.seller-message {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--color-accent);
+  border-radius: var(--border-radius-md);
+  text-align: center;
+  color: var(--color-text-secondary);
+  border: 1px dashed var(--color-primary);
   font-size: var(--font-size-base);
-  color: var(--color-text-primary);
-  line-height: 1.8;
 }
 
-.description-content p {
-  margin: 0;
-}
-
-/* 响应式设计 */
+/* Responsive */
 @media (max-width: 992px) {
   .product-main {
     grid-template-columns: 1fr;
@@ -520,13 +522,20 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 767.98px) {
-  .condition-tabs {
+@media (max-width: 768px) {
+  .nav-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+  }
+  
+  .detail-row {
     flex-direction: column;
   }
-
-  .condition-tab {
+  
+  .detail-label {
     width: 100%;
+    margin-bottom: var(--spacing-xs);
   }
 }
 </style>
