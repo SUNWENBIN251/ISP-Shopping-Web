@@ -16,8 +16,8 @@
 
     <!-- Content -->
     <template v-else>
-      <!-- 第一板块：占满整个视口 -->
-      <section class="hero-section">
+      <!-- 第一板块：占满整个视口（关怀模式隐藏） -->
+      <section v-if="!isCareMode" class="hero-section">
         <!-- 秋叶装饰元素 -->
         <div class="phoenix-decoration">
           <div class="phoenix-flower flower-1">🍁</div>
@@ -72,6 +72,12 @@
       <!-- 第二板块：Featured Albums with Pagination -->
       <section class="albums-section">
         <div class="container">
+          <div class="care-only care-banner">
+            <div class="title">👋 关怀模式</div>
+            <div class="desc">
+              点击唱片卡片即可查看详情并购买。字更大、信息更少，操作更清晰。
+            </div>
+          </div>
           <h2 class="section-title">{{ $t('home.featuredAlbums') }}</h2>
           
           <div v-if="allAlbums.length === 0" class="no-albums">
@@ -137,8 +143,10 @@ import { useI18n } from 'vue-i18n'
 import { getAlbums } from '../services/albumService'
 import { getForumMessages } from '../services/forumService'
 import { getRecordPlaceholder } from '../utils/recordPlaceholder'
+import { careModeEnabled } from '../services/careModeService'
 
 const { t } = useI18n()
+const isCareMode = computed(() => careModeEnabled.value)
 
 // State
 const isLoading = ref(true)

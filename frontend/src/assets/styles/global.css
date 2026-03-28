@@ -27,6 +27,96 @@ body {
     background-color: #fff;
 }
 
+/* ============================================
+   关怀模式（elder people version）
+   - 通过覆盖 CSS 变量整体放大字号/间距
+   - 用 care-hide 标记隐藏非必要信息
+   ============================================ */
+body.care-mode {
+    /* 放大但不过度夸张（适合老年阅读） */
+    --font-size-xs: 0.85rem;
+    --font-size-sm: 0.95rem;
+    --font-size-base: 1.1rem;
+    --font-size-lg: 1.2rem;
+    --font-size-xl: 1.35rem;
+    --font-size-xxl: 1.6rem;
+    --font-size-xxxl: 1.9rem;
+
+    --spacing-xs: 0.35rem;
+    --spacing-sm: 0.6rem;
+    --spacing-md: 1.05rem;
+    --spacing-lg: 1.4rem;
+    --spacing-xl: 1.9rem;
+    --spacing-xxl: 2.6rem;
+
+    line-height: 1.65;
+}
+
+body.care-mode input,
+body.care-mode textarea,
+body.care-mode select,
+body.care-mode button {
+    font-size: inherit;
+}
+
+body.care-mode .care-hide {
+    display: none !important;
+}
+
+/* 只在关怀模式展示 */
+.care-only {
+    display: none !important;
+}
+body.care-mode .care-only {
+    display: block !important;
+}
+
+body.care-mode .care-compact {
+    padding: var(--spacing-md) !important;
+}
+
+/* 关怀模式：常用卡片/提示条 */
+body.care-mode .care-banner {
+    background: var(--color-bg);
+    border: 2px solid var(--color-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+body.care-mode .care-banner .title {
+    font-weight: 900;
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-primary);
+}
+
+body.care-mode .care-banner .desc {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-base);
+    line-height: 1.75;
+}
+
+/* 关怀模式：网格重排（更易读、但不夸张） */
+/* 唱片/专辑：一行两个，整体尺寸约缩小 50%（相对单列） */
+body.care-mode .albums-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
+/* 商品/地址：保持单列更清晰 */
+body.care-mode .products-grid,
+body.care-mode .addresses-grid {
+    grid-template-columns: 1fr !important;
+}
+
+/* 关怀模式：按钮更大、更易点 */
+body.care-mode .btn-primary,
+body.care-mode .btn-secondary,
+body.care-mode button {
+    min-height: 44px;
+}
+
 #app {
     min-height: 100vh;
     width: 100%;

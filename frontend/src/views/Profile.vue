@@ -95,7 +95,7 @@
                 <div class="action-icon">📦</div>
                 <div class="action-text">
                   <div class="action-title">{{ $t('profile.myOrders') }}</div>
-                  <div class="action-desc">{{ $t('profile.viewOrders') }}</div>
+                  <div class="action-desc care-hide">{{ $t('profile.viewOrders') }}</div>
                 </div>
               </router-link>
 
@@ -103,7 +103,7 @@
                 <div class="action-icon">❤️</div>
                 <div class="action-text">
                   <div class="action-title">{{ $t('profile.myWishlist') }}</div>
-                  <div class="action-desc">{{ $t('profile.viewWishlist') }}</div>
+                  <div class="action-desc care-hide">{{ $t('profile.viewWishlist') }}</div>
                 </div>
               </router-link>
 
@@ -111,7 +111,7 @@
                 <div class="action-icon">🛒</div>
                 <div class="action-text">
                   <div class="action-title">{{ $t('common.cart') }}</div>
-                  <div class="action-desc">{{ $t('profile.viewCart') }}</div>
+                  <div class="action-desc care-hide">{{ $t('profile.viewCart') }}</div>
                 </div>
               </router-link>
 
@@ -119,7 +119,7 @@
                 <div class="action-icon">🚪</div>
                 <div class="action-text">
                   <div class="action-title">{{ $t('profile.logout') }}</div>
-                  <div class="action-desc">{{ $t('profile.logoutDesc') }}</div>
+                  <div class="action-desc care-hide">{{ $t('profile.logoutDesc') }}</div>
                 </div>
               </button>
             </div>
@@ -149,7 +149,7 @@
           </div>
 
           <!-- 密码修改提示 -->
-          <div class="password-tip">
+          <div class="password-tip care-hide">
             <p>{{ $t('profile.forgotPasswordTip') }}
               <router-link to="/forgot-password" class="link">
                 {{ $t('common.forgotPassword') }}

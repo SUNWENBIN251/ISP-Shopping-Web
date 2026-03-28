@@ -1,7 +1,7 @@
 <template>
   <div class="forum-page" ref="forumContainer">
     <!-- 秋日背景 -->
-    <div class="autumn-background">
+    <div class="autumn-background care-hide">
       <div class="leaf leaf-1">🍂</div>
       <div class="leaf leaf-2">🍁</div>
       <div class="leaf leaf-3">🍂</div>
@@ -23,7 +23,23 @@
       </button>
     </div>
 
-    <!-- 气泡容器 -->
+    <!-- 关怀模式：列表模式（更易读） -->
+    <div v-else-if="isCareMode" class="care-forum-list container">
+      <div v-if="messages.length === 0" class="empty-state">
+        <p>{{ $t('home.noMessages') }}</p>
+      </div>
+      <div v-else class="care-messages">
+        <div v-for="m in messages" :key="m.id" class="care-message">
+          <div class="care-message-meta">
+            <span class="care-user">{{ m.username || $t('home.anonymous') }}</span>
+            <span class="care-time">{{ formatTime(m.created_at) }}</span>
+          </div>
+          <div class="care-text">{{ m.content }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 普通模式：气泡容器 -->
     <div v-else class="bubbles-container" ref="bubblesContainer" :style="{ height: bubblesContainerHeight + 'px' }">
       <div
         v-for="(bubble, index) in bubbles"
@@ -76,12 +92,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getForumMessages, postMessage } from '../services/forumService'
 import { isAuthenticated as checkAuth } from '../services/authService'
+import { careModeEnabled } from '../services/careModeService'
 
 const { t } = useI18n()
+const isCareMode = computed(() => careModeEnabled.value)
 
 const forumContainer = ref(null)
 const bubblesContainer = ref(null)
@@ -93,6 +111,7 @@ const bubblesContainerHeight = ref(0)
 const isLoading = ref(true)
 const error = ref(null)
 const bubbles = ref([])
+const messages = ref([])
 const isAuthenticated = ref(false)
 
 let animationId = null
@@ -126,14 +145,14 @@ const loadMessages = async () => {
   
   try {
     console.log('💬 Loading forum messages from database...')
-    const messages = await getForumMessages(50) // Get up to 50 messages
-    console.log('✅ Forum messages loaded:', messages)
+    const data = await getForumMessages(50) // Get up to 50 messages
+    console.log('✅ Forum messages loaded:', data)
     
-    if (messages && messages.length > 0) {
-      // Initialize bubble positions after we have data
-      setTimeout(() => {
-        initBubbles(messages)
-      }, 100)
+    messages.value = Array.isArray(data) ? data : []
+
+    if (messages.value.length > 0 && !isCareMode.value) {
+      // Initialize bubble positions after we have data (normal mode only)
+      setTimeout(() => initBubbles(messages.value), 100)
     } else {
       console.log('⚠️ No forum messages found in database')
       bubbles.value = []
@@ -294,6 +313,7 @@ const handleInputPanelCollision = (bubble) => {
 
 // 动画循环
 const animate = () => {
+  if (isCareMode.value) return
   if (!bubblesContainer.value || bubbles.value.length === 0) return
   
   updateBubblesContainerHeight()
@@ -393,7 +413,7 @@ onMounted(() => {
   
   // Start animation after data is loaded
   setTimeout(() => {
-    animate()
+    if (!isCareMode.value) animate()
   }, 500)
   
   window.addEventListener('resize', handleResize)
@@ -418,6 +438,48 @@ onUnmounted(() => {
   background: #FDC1A7;
   display: flex;
   flex-direction: column;
+}
+
+/* 关怀模式：列表布局 */
+.care-forum-list {
+  position: relative;
+  z-index: 2;
+  padding-top: var(--spacing-lg);
+  padding-bottom: 140px; /* keep space for input panel */
+}
+
+.care-messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.care-message {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.care-message-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.care-user {
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.care-text {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.7;
 }
 
 /* 秋日背景 */

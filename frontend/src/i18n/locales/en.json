@@ -10,6 +10,9 @@
     "profile": "Profile",
     "orders": "My Orders",
     "wishlist": "Wishlist",
+    "careMode": "Care Mode",
+    "careModeOn": "On",
+    "careModeOff": "Off",
     "logout": "Logout",
     "nav": {
       "home": "Home",

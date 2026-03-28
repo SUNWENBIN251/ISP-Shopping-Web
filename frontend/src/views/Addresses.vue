@@ -26,6 +26,13 @@
           </button>
         </div>
 
+        <div class="care-only care-banner">
+          <div class="title">📍 收货地址</div>
+          <div class="desc">
+            建议设置一个“默认地址”，下单会更方便。
+          </div>
+        </div>
+
         <!-- Address Grid -->
         <div v-if="addresses.length === 0" class="empty-state">
           <div class="empty-icon">📍</div>

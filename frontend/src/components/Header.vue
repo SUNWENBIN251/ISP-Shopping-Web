@@ -62,6 +62,14 @@
           <span class="action-text">{{ $t('header.orders') }}</span>
         </div>
 
+        <!-- 关怀模式 - customer only -->
+        <div v-if="showCareModeToggle" class="action-item" @click="handleToggleCareMode">
+          <span class="action-icon">🧓</span>
+          <span class="action-text">
+            {{ $t('header.careMode') }} {{ careModeEnabled ? $t('header.careModeOn') : $t('header.careModeOff') }}
+          </span>
+        </div>
+
         <!-- 用户菜单 -->
         <div class="action-item" v-if="!isLoggedIn" @click="$router.push('/login')">
           <span class="action-icon">👤</span>
@@ -105,6 +113,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getCurrentUser, logout } from '../services/authService'
 import { getCartSummary } from '../services/cartService'
+import { careModeEnabled, toggleCareMode, ensureCareModeAllowed } from '../services/careModeService'
 
 const router = useRouter()
 const { locale, t } = useI18n()
@@ -129,6 +138,15 @@ const currentLocale = computed(() => locale.value)
 const currentLanguageText = computed(() => {
   return t(`language.${locale.value}`)
 })
+
+const showCareModeToggle = computed(() => {
+  return isLoggedIn.value && !isSeller.value
+})
+
+const handleToggleCareMode = () => {
+  if (!ensureCareModeAllowed()) return
+  toggleCareMode()
+}
 
 // Add this function with your other methods
 const goToOrders = () => {
@@ -160,11 +178,14 @@ const updateUserState = async () => {
     username.value = user.name || user.username
     userRole.value = user.role || 'customer'
     isSeller.value = user.role === 'seller' || user.role === 'admin'  // Now this works with ref
+    // Care mode is customer only; enforce when role changes
+    ensureCareModeAllowed()
   } else {
     isLoggedIn.value = false
     username.value = ''
     userRole.value = ''
     isSeller.value = false  // Now this works with ref
+    ensureCareModeAllowed()
   }
 }
 

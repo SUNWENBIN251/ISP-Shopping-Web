@@ -17,19 +17,25 @@
 
       <!-- Product Content -->
       <div v-else class="product-main">
+        <div class="care-only care-banner">
+          <div class="title">🧾 购买提示</div>
+          <div class="desc">
+            可以先加入购物车（🛒），也可以直接购买（💰）。每件都是孤品。
+          </div>
+        </div>
         <!-- 左侧：商品大图 with navigation buttons -->
         <div class="product-image-section">
           <div class="main-image-wrapper">
             <img :src="currentImage" :alt="productName" class="main-image" @error="handleMainImageError" />
             
             <!-- Navigation buttons -->
-            <div class="image-nav" v-if="productImages.length > 1">
+            <div class="image-nav care-hide" v-if="productImages.length > 1">
               <button class="nav-btn prev" @click="prevImage">‹</button>
               <button class="nav-btn next" @click="nextImage">›</button>
             </div>
             
             <!-- Image counter -->
-            <div class="image-counter" v-if="productImages.length > 1">
+            <div class="image-counter care-hide" v-if="productImages.length > 1">
               {{ currentIndex + 1 }} / {{ productImages.length }}
             </div>
           </div>

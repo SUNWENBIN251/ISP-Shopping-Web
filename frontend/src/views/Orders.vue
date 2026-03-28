@@ -4,7 +4,7 @@
       <h1 class="page-title">{{ $t('orders.title') }}</h1>
 
       <!-- Filter Section -->
-      <div v-if="orders.length > 0" class="filter-section">
+      <div v-if="orders.length > 0" class="filter-section care-hide">
         <div class="filter-group">
           <label>{{ $t('orders.filter.byStatus') }}</label>
           <select v-model="statusFilter" class="filter-select">
@@ -53,6 +53,10 @@
 
       <!-- Orders List -->
       <div v-else-if="filteredOrders.length > 0" class="orders-list">
+        <div class="care-only care-banner">
+          <div class="title">📦 我的订单</div>
+          <div class="desc">点击“查看详情”可查看地址、付款状态与商品清单。</div>
+        </div>
         <div v-for="order in filteredOrders" :key="order.id" class="order-card">
           <div class="order-header">
             <div class="order-info">

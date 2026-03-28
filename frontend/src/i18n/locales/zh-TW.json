@@ -10,6 +10,9 @@
     "profile": "個人中心",
     "orders": "我的訂單",
     "wishlist": "我的收藏",
+    "careMode": "關懷模式",
+    "careModeOn": "開",
+    "careModeOff": "關",
     "logout": "退出登錄",
     "nav": {
       "home": "首頁",

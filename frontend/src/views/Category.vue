@@ -3,7 +3,12 @@
     <div class="container">
       <div class="page-header">
         <h1 class="page-title">{{ $t('category.title') }}</h1>
-        <p class="page-subtitle">{{ $t('category.subtitle') }}</p>
+        <p class="page-subtitle care-hide">{{ $t('category.subtitle') }}</p>
+      </div>
+
+      <div class="care-only care-banner">
+        <div class="title">🧭 先选一个分类</div>
+        <div class="desc">点进分类后，会自动带你去对应的唱片列表。</div>
       </div>
 
       <!-- Loading State -->
@@ -32,7 +37,7 @@
             <span class="icon-emoji">{{ category.icon }}</span>
           </div>
           <h3 class="category-name">{{ category.name }}</h3>
-          <p class="category-description">{{ category.description }}</p>
+          <p class="category-description care-hide">{{ category.description }}</p>
           <div class="category-footer">
             <span class="category-count">{{ category.count }} {{ $t('category.albums') }}</span>
             <span class="category-arrow">→</span>

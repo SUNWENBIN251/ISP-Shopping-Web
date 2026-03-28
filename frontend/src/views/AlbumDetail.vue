@@ -29,7 +29,7 @@
             <p class="album-stats">{{ totalProducts }} {{ $t('albumDetail.availableCopies') }}</p>
             
             <!-- Rating Section -->
-            <div class="album-rating" v-if="reviewCount > 0">
+            <div class="album-rating care-hide" v-if="reviewCount > 0">
               <div class="stars">
                 <span v-for="i in 5" :key="i" class="star" :class="{ active: i <= Math.round(avgRating) }">★</span>
               </div>
@@ -37,7 +37,7 @@
             </div>
             
             <div class="album-actions">
-              <router-link :to="`/album/${albumId}/reviews`" class="view-reviews-btn">
+              <router-link :to="`/album/${albumId}/reviews`" class="view-reviews-btn care-hide">
                 {{ $t('albumDetail.viewAllReviews') }} ({{ reviewCount }})
               </router-link>
             </div>
@@ -45,13 +45,18 @@
         </div>
 
         <!-- Tracklist (if available) -->
-        <div v-if="albumTracklist" class="tracklist-section">
+        <div v-if="albumTracklist" class="tracklist-section care-hide">
           <h2 class="section-title">{{ $t('albumDetail.tracklist') }}</h2>
           <p class="tracklist">{{ albumTracklist }}</p>
         </div>
 
         <!-- Available Products by Condition -->
         <h2 class="section-title">{{ $t('albumDetail.availableCopies') }}</h2>
+
+        <div class="care-only care-banner">
+          <div class="title">👇 请选择成色并进入购买</div>
+          <div class="desc">点任意一条商品卡片，就会进入商品详情页（可以加入购物车或直接购买）。</div>
+        </div>
         
         <div v-if="products.length === 0" class="no-products">
           <p>{{ $t('albumDetail.noProducts') }}</p>
@@ -89,7 +94,10 @@
                 <div class="product-info">
                   <p class="product-condition">{{ $t(`albumDetail.conditions.${product.condition.toLowerCase().replace(' ', '')}`) || product.condition }}</p>
                   <p class="product-price">¥{{ product.price.toFixed(2) }}</p>
-                  <p class="product-description">{{ product.description || $t('productDetail.noDescription') || 'No description' }}</p>
+                  <p class="product-description care-hide">{{ product.description || $t('productDetail.noDescription') || 'No description' }}</p>
+                  <p class="care-only" style="margin-top: var(--spacing-xs); color: var(--color-primary); font-weight: 800;">
+                    👉 点我查看详情
+                  </p>
                 </div>
               </div>
             </div>

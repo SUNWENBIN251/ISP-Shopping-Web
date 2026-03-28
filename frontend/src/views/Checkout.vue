@@ -29,6 +29,12 @@
 
       <!-- Checkout Form -->
       <div v-else class="checkout-content">
+        <div class="care-only care-banner">
+          <div class="title">💰 结算提示</div>
+          <div class="desc">
+            请先确认收货地址与支付方式，然后点击底部“提交订单”。金额会自动计算。
+          </div>
+        </div>
         <div class="checkout-grid">
           <!-- Left Column - Shipping Information -->
           <div class="checkout-form">
@@ -65,7 +71,7 @@
                   </div>
                 </div>
                 
-                <button class="btn-link" @click="$router.push('/addresses')">
+                <button class="btn-link care-hide" @click="$router.push('/addresses')">
                   {{ $t('checkout.manageAddresses') }}
                 </button>
               </div>

@@ -47,6 +47,12 @@
 
       <!-- 搜索结果 -->
       <div v-else class="search-results">
+        <div class="care-only care-banner">
+          <div class="title">🔎 搜索提示</div>
+          <div class="desc">
+            直接输入专辑名/歌手名搜索；也可以先点分类，再看结果。
+          </div>
+        </div>
         <!-- 搜索提示 - only show when no search and no category selected -->
         <div v-if="!searched && !isLoading && !showAllAlbums" class="search-tip">
           <div class="tip-icon">💡</div>
