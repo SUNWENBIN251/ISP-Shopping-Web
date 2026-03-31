@@ -235,6 +235,33 @@
             </div>
           </div>
         </div>
+
+        <div v-if="searchType === 'name' && searchQuery && filteredProductsByName.length > 0" class="products-section">
+          <h4 class="products-title">Matched Products</h4>
+          <div class="products-list">
+            <div
+              v-for="product in filteredProductsByName"
+              :key="`search-${product.product_id || product.id}`"
+              class="product-item"
+            >
+              <div class="product-details">
+                <div class="product-id">ID: {{ product.product_id || product.id }}</div>
+                <h5>{{ product.album_title }} · {{ product.condition }}</h5>
+                <p class="product-price">¥{{ product.price }}</p>
+              </div>
+              <div class="product-actions">
+                <button class="btn-secondary small" @click="editProduct(product)">{{ $t('seller.edit') }}</button>
+                <button
+                  class="btn-small"
+                  :class="product.is_active ? 'btn-warning' : 'btn-success'"
+                  @click="toggleProductStatus(product)"
+                >
+                  {{ product.is_active !== 1 ? $t('seller.activate') : $t('seller.deactivate') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Add Album Form -->
@@ -850,6 +877,7 @@ const searchType = ref('name')
 const searchedProduct = ref(null)
 const isSearching = ref(false)
 const hasSearchedById = ref(false)
+const allProducts = ref([])
 
 // Computed: Filter albums by search query
 const filteredAlbums = computed(() => {
@@ -865,6 +893,17 @@ const filteredAlbums = computed(() => {
     const artistMatch = album.artist?.toLowerCase().includes(query)
     return titleMatch || artistMatch
   })
+})
+
+const filteredProductsByName = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim()
+  if (!query) return []
+  return allProducts.value.filter((product) => {
+    const productId = String(product.product_id || product.id || '')
+    const albumTitle = (product.album_title || '').toLowerCase()
+    const condition = (product.condition || '').toLowerCase()
+    return productId.includes(query) || albumTitle.includes(query) || condition.includes(query)
+  }).slice(0, 20)
 })
 
 // Computed: Get condition conditions array
@@ -1507,6 +1546,17 @@ const loadSellerData = async () => {
     if (albumsRes.ok) {
       albums.value = await albumsRes.json()
       console.log('Albums loaded with product counts:', albums.value)
+    }
+
+    // Load products once for search visibility (includes product_id)
+    const productsRes = await fetch('/api/seller/products', { headers })
+    if (productsRes.ok) {
+      const products = await productsRes.json()
+      allProducts.value = products.map((p) => ({
+        ...p,
+        product_id: p.product_id || p.id,
+        id: p.id || p.product_id
+      }))
     }
     
     // Load orders

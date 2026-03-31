@@ -99,7 +99,13 @@
         <div class="items-card">
           <h2>{{ $t('orderDetail.orderItems') }}</h2>
           <div class="items-list">
-            <div v-for="item in order.items" :key="item.id" class="order-item">
+            <div
+              v-for="item in order.items"
+              :key="item.id"
+              class="order-item"
+              :class="{ clickable: !!item.album_id }"
+              @click="goToAlbum(item.album_id)"
+            >
               <img :src="item.image" :alt="item.name" class="item-image">
               <div class="item-details">
                 <h3>{{ item.name }}</h3>
@@ -263,7 +269,7 @@ const toNumber = (v) => {
 const formatMoney = (v) => toNumber(v).toFixed(2)
 
 const formatDateTime = (dateString) => {
-  if (!dateString) return '-'
+  if (!dateString) return ''
   const date = new Date(dateString)
   return date.toLocaleString(locale.value === 'en' ? 'en-US' : 'zh-CN', {
     year: 'numeric',
@@ -416,6 +422,11 @@ const goToProductReviewPage = async (productId, albumId) => {
     console.error('Failed to get product info:', err)
     alert(t('orderDetail.review.errors.loadFailed'))
   }
+}
+
+const goToAlbum = (albumId) => {
+  if (!albumId) return
+  router.push(`/album/${albumId}`)
 }
 
 // Format date
@@ -756,6 +767,17 @@ onMounted(() => {
   background: var(--color-bg);
   border-radius: var(--border-radius-md);
   border: 1px solid var(--color-border);
+}
+
+.order-item.clickable {
+  cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.order-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
 }
 
 .item-image {
