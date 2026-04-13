@@ -18,9 +18,9 @@
       <!-- Product Content -->
       <div v-else class="product-main">
         <div class="care-only care-banner">
-          <div class="title">🧾 购买提示</div>
+          <div class="title">🧾 {{ $t('careMode.productDetailTitle') }}</div>
           <div class="desc">
-            可以先加入购物车（🛒），也可以直接购买（💰）。每件都是孤品。
+            {{ $t('careMode.productDetailDescription') }}
           </div>
         </div>
         <!-- 左侧：商品大图 with navigation buttons -->

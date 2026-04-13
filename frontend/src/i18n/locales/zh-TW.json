@@ -823,5 +823,25 @@
       "response": "回覆時間",
       "hours": "小時"
     }
+  },
+  "careMode": {
+    "title": "關懷模式",
+    "homeDescription": "點擊唱片卡片即可查看詳情並購買。字更大、資訊更少，操作更清晰。",
+    "searchTitle": "搜尋提示",
+    "searchDescription": "直接輸入專輯名/歌手名搜尋；也可以先點分類，再看結果。",
+    "categoryTitle": "先選一個分類",
+    "categoryDescription": "點進分類後，會自動帶你去對應的唱片列表。",
+    "albumDetailTitle": "請選擇成色並進入購買",
+    "albumDetailDescription": "點任意一條商品卡片，就會進入商品詳情頁（可以加入購物車或直接購買）。",
+    "productDetailTitle": "購買提示",
+    "productDetailDescription": "可以先加入購物車（🛒），也可以直接購買（💰）。每件都是孤品。",
+    "cartTitle": "購物車使用方法",
+    "cartDescription": "每件商品都是孤品：數量只能選 <strong>0 或 1</strong>。只有數量為 <strong>1</strong> 的商品會進入結帳。",
+    "addressesTitle": "收貨地址",
+    "addressesDescription": "建議設置一個'默認地址'，下單會更方便。",
+    "ordersTitle": "我的訂單",
+    "ordersDescription": "點擊'查看詳情'可查看地址、付款狀態與商品清單。",
+    "checkoutTitle": "結算提示",
+"checkoutDescription": "請先確認收貨地址與支付方式，然後點擊底部\"提交訂單\"。金額會自動計算。"
   }
 }
