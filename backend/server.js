@@ -10,6 +10,43 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
+// ==================== XSS SANITIZATION FUNCTIONS ====================
+function escapeHtml(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/`/g, '&#96;')
+        .replace(/\//g, '&#x2F;');
+}
+
+function removeScriptTags(str) {
+    if (!str || typeof str !== 'string') return '';
+    let cleaned = str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    cleaned = cleaned.replace(/javascript:/gi, 'blocked:');
+    cleaned = cleaned.replace(/on\w+\s*=/gi, 'data-blocked=');
+    return cleaned;
+}
+
+function sanitizeInput(input, maxLength = 500) {
+    if (!input || typeof input !== 'string') return '';
+    let cleaned = removeScriptTags(input);
+    cleaned = escapeHtml(cleaned);
+    cleaned = cleaned.trim();
+    if (cleaned.length > maxLength) {
+        cleaned = cleaned.substring(0, maxLength);
+    }
+    return cleaned;
+}
+
+const sanitizeMessage = (input) => sanitizeInput(input, 500);
+const sanitizeReview = (input) => sanitizeInput(input, 1000);
+const sanitizeDescription = (input) => sanitizeInput(input, 2000);
+const sanitizeShort = (input) => sanitizeInput(input, 100);
+
 app.use(cors());
 // Seller dashboard uploads product images as base64 strings in JSON (can be several MB).
 // Increase body size limit to avoid 413 Payload Too Large.
@@ -352,46 +389,6 @@ app.get('/api/seller/orders', authenticateToken, requireSeller, (req, res) => {
   );
 });
 
-// Create new album
-app.post('/api/albums', authenticateToken, requireSeller, (req, res) => {
-  const { title, artist, cover_image, genre, tracklist, release_year } = req.body;
-  
-  db.run(
-    `INSERT INTO Albums (title, artist, cover_image_url, genre, tracklist, release_year, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-    [title, artist, cover_image, genre, tracklist, release_year],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.status(201).json({ 
-        success: true, 
-        album_id: this.lastID,
-        message: 'Album created successfully' 
-      });
-    }
-  );
-});
-
-// Update album
-app.put('/api/albums/:id', authenticateToken, requireSeller, (req, res) => {
-  const albumId = req.params.id;
-  const { title, artist, cover_image, genre, tracklist, release_year } = req.body;
-  
-  db.run(
-    `UPDATE Albums 
-     SET title = ?, artist = ?, cover_image_url = ?, genre = ?, tracklist = ?, release_year = ?
-     WHERE album_id = ?`,
-    [title, artist, cover_image, genre, tracklist, release_year, albumId],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ success: true, message: 'Album updated successfully' });
-    }
-  );
-});
-
 // Search albums
 app.get('/api/albums/search', (req, res) => {
   const { search, genre, limit = 20, offset = 0 } = req.query;
@@ -434,7 +431,11 @@ app.get('/api/albums/search', (req, res) => {
 
 // Create new product
 app.post('/api/products', authenticateToken, requireSeller, (req, res) => {
-  const { album_id, condition, price, description, images } = req.body;
+  let { album_id, condition, price, description, images } = req.body;
+  
+  // XSS Protection: Sanitize product fields
+  condition = sanitizeShort(condition);
+  description = sanitizeDescription(description);
   
   db.run(
     `INSERT INTO Products (album_id, condition, price, description, image_urls, is_active, created_at)
@@ -453,24 +454,6 @@ app.post('/api/products', authenticateToken, requireSeller, (req, res) => {
   );
 });
 
-// Update product
-app.put('/api/products/:id', authenticateToken, requireSeller, (req, res) => {
-  const productId = req.params.id;
-  const { condition, price, description, images } = req.body;
-  
-  db.run(
-    `UPDATE Products 
-     SET condition = ?, price = ?, description = ?, image_urls = ?
-     WHERE product_id = ?`,
-    [condition, price, description, JSON.stringify(images), productId],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ success: true, message: 'Product updated successfully' });
-    }
-  );
-});
 
 // Get single order for seller (by order ID only, no user check)
 app.get('/api/seller/orders/:id', authenticateToken, requireSeller, (req, res) => {
@@ -1390,8 +1373,11 @@ app.get('/api/reviews/album/:albumId', (req, res) => {
 // Add reply to a review (no edit/delete)
 app.post('/api/reviews/:reviewId/reply', authenticateToken, (req, res) => {
   const reviewId = req.params.reviewId;
-  const { content, parent_reply_id } = req.body;
+  let { content, parent_reply_id } = req.body;
   const userId = req.user.userId;
+  
+  // XSS Protection: Sanitize reply content
+  content = sanitizeMessage(content);
   
   if (!content || content.trim().length === 0) {
     return res.status(400).json({ error: 'Reply content cannot be empty' });
@@ -1501,8 +1487,11 @@ app.get('/api/reviews/album/:albumId/average', (req, res) => {
 
 // Create a new review
 app.post('/api/reviews', authenticateToken, (req, res) => {
-  const { product_id, order_id, rating, comment } = req.body;
+  let { product_id, order_id, rating, comment } = req.body;
   const userId = req.user.userId;
+  
+  // XSS Protection: Sanitize review comment
+  comment = sanitizeReview(comment);
   
   console.log('=== REVIEW SUBMISSION ===');
   console.log('product_id:', product_id);
@@ -1653,8 +1642,11 @@ app.get('/api/forum/messages', (req, res) => {
 });
 
 app.post('/api/forum/messages', authenticateToken, (req, res) => {
-    const { content } = req.body;
+    let { content } = req.body;
     const userId = req.user.userId;
+    
+    // XSS Protection: Sanitize user input
+    content = sanitizeMessage(content);
     
     if (!content || content.length > 144) {
         return res.status(400).json({ error: 'Content must be between 1-144 characters' });
@@ -1693,7 +1685,11 @@ app.post('/api/forum/messages', authenticateToken, (req, res) => {
 
 // Register new user - always customer role
 app.post('/api/users/register', async (req, res) => {
-  const { username, email, password } = req.body;  // Should match what you send
+  let { username, email, password } = req.body;
+  
+  // XSS Protection: Sanitize user input
+  username = sanitizeShort(username);
+  email = sanitizeInput(email, 100);  // Should match what you send
   
   console.log('Registration attempt:', { username, email }); // Add this for debugging
 
@@ -2011,7 +2007,13 @@ app.put('/api/seller/orders/:id/status', authenticateToken, requireSeller, (req,
 
 // Create new album
 app.post('/api/albums', authenticateToken, requireSeller, (req, res) => {
-  const { title, artist, cover_image, genre, tracklist, release_year } = req.body;
+  let { title, artist, cover_image, genre, tracklist, release_year } = req.body;
+  
+  // XSS Protection: Sanitize album fields
+  title = sanitizeShort(title);
+  artist = sanitizeShort(artist);
+  genre = sanitizeShort(genre);
+  tracklist = sanitizeDescription(tracklist);
   
   db.run(
     `INSERT INTO Albums (title, artist, cover_image_url, genre, tracklist, release_year, created_at)
@@ -2033,7 +2035,13 @@ app.post('/api/albums', authenticateToken, requireSeller, (req, res) => {
 // Update album
 app.put('/api/albums/:id', authenticateToken, requireSeller, (req, res) => {
   const albumId = req.params.id;
-  const { title, artist, cover_image, genre, tracklist, release_year } = req.body;
+  let { title, artist, cover_image, genre, tracklist, release_year } = req.body;
+  
+  // XSS Protection: Sanitize album fields
+  title = sanitizeShort(title);
+  artist = sanitizeShort(artist);
+  genre = sanitizeShort(genre);
+  tracklist = sanitizeDescription(tracklist);
   
   db.run(
     `UPDATE Albums 
@@ -2051,7 +2059,11 @@ app.put('/api/albums/:id', authenticateToken, requireSeller, (req, res) => {
 
 // Create new product
 app.post('/api/products', authenticateToken, requireSeller, (req, res) => {
-  const { album_id, condition, price, description, images } = req.body;
+  let { album_id, condition, price, description, images } = req.body;
+  
+  // XSS Protection: Sanitize product fields
+  condition = sanitizeShort(condition);
+  description = sanitizeDescription(description);
   
   db.run(
     `INSERT INTO Products (album_id, condition, price, description, image_urls, is_active, created_at)
@@ -2074,7 +2086,11 @@ app.post('/api/products', authenticateToken, requireSeller, (req, res) => {
 // Update product
 app.put('/api/products/:id', authenticateToken, requireSeller, (req, res) => {
   const productId = req.params.id;
-  const { condition, price, description, images } = req.body;
+  let { condition, price, description, images } = req.body;
+  
+  // XSS Protection: Sanitize product fields
+  condition = sanitizeShort(condition);
+  description = sanitizeDescription(description);
   
   db.run(
     `UPDATE Products 
@@ -2183,7 +2199,7 @@ app.get('/api/addresses/:id', authenticateToken, (req, res) => {
 // Create new address
 app.post('/api/addresses', authenticateToken, (req, res) => {
     const userId = req.user.userId;
-    const {
+    let {
         recipient_name,
         phone,
         address_line1,
@@ -2194,6 +2210,16 @@ app.post('/api/addresses', authenticateToken, (req, res) => {
         country,
         is_default = false
     } = req.body;
+    
+    // XSS Protection: Sanitize all address fields
+    recipient_name = sanitizeShort(recipient_name);
+    phone = sanitizeShort(phone);
+    address_line1 = sanitizeShort(address_line1);
+    address_line2 = sanitizeShort(address_line2 || '');
+    city = sanitizeShort(city);
+    state = sanitizeShort(state || '');
+    postal_code = sanitizeShort(postal_code);
+    country = sanitizeShort(country);
     
     // Validate required fields
     if (!recipient_name || !phone || !address_line1 || !city || !postal_code || !country) {
@@ -2238,7 +2264,7 @@ app.post('/api/addresses', authenticateToken, (req, res) => {
 app.put('/api/addresses/:id', authenticateToken, (req, res) => {
     const addressId = req.params.id;
     const userId = req.user.userId;
-    const {
+    let {
         recipient_name,
         phone,
         address_line1,
@@ -2249,6 +2275,16 @@ app.put('/api/addresses/:id', authenticateToken, (req, res) => {
         country,
         is_default
     } = req.body;
+    
+    // XSS Protection: Sanitize all address fields
+    recipient_name = sanitizeShort(recipient_name);
+    phone = sanitizeShort(phone);
+    address_line1 = sanitizeShort(address_line1);
+    address_line2 = sanitizeShort(address_line2 || '');
+    city = sanitizeShort(city);
+    state = sanitizeShort(state || '');
+    postal_code = sanitizeShort(postal_code);
+    country = sanitizeShort(country);
     
     // First check if address belongs to user
     db.get(
