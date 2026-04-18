@@ -2789,14 +2789,29 @@ app.get('/api/seller/reports/album-weekly', authenticateToken, requireSeller, (r
   if (isNaN(weeks)) weeks = 12;
   weeks = Math.max(Math.min(weeks, 52), 4);
   const days = weeks * 7;
-  const albumId = req.query.album_id ? parseInt(req.query.album_id) : null;
+  const rawAlbumId = req.query.album_id;
+  const parsed = rawAlbumId != null && rawAlbumId !== '' ? parseInt(String(rawAlbumId), 10) : NaN;
+  const albumId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 
   console.log(`Album weekly: weeks=${weeks}, days=${days}, albumId=${albumId}`);
 
   const dateFilter = `-${days} days`;
   console.log('Date filter:', dateFilter);
 
-  let query = `
+  const baseFrom = `
+    FROM Orders o
+    JOIN Order_Items oi ON o.order_id = oi.order_id
+    JOIN Products p ON oi.product_id = p.product_id
+    JOIN Albums a ON p.album_id = a.album_id
+    WHERE o.status IN ('paid', 'shipped', 'completed')
+      AND o.created_at >= date('now', '${dateFilter}')
+  `;
+
+  let query;
+  const params = [];
+
+  if (albumId) {
+    query = `
     SELECT
       strftime('%Y-%W', o.created_at) as week,
       date(o.created_at, '-' || strftime('%w', o.created_at) || ' days') as week_start,
@@ -2807,24 +2822,30 @@ app.get('/api/seller/reports/album-weekly', authenticateToken, requireSeller, (r
       COUNT(oi.order_item_id) as units_sold,
       SUM(oi.quantity) as total_quantity,
       SUM(oi.quantity * oi.price_at_purchase) as revenue
-    FROM Orders o
-    JOIN Order_Items oi ON o.order_id = oi.order_id
-    JOIN Products p ON oi.product_id = p.product_id
-    JOIN Albums a ON p.album_id = a.album_id
-    WHERE o.status IN ('paid', 'shipped', 'completed')
-      AND o.created_at >= date('now', '${dateFilter}')
-  `;
-
-  const params = [];
-  if (albumId) {
-    query += ` AND a.album_id = ?`;
-    params.push(albumId);
-  }
-
-  query += `
+    ${baseFrom}
+      AND a.album_id = ?
     GROUP BY week, a.album_id
     ORDER BY week ASC, a.title
-  `;
+    `;
+    params.push(albumId);
+  } else {
+    // 「所有专辑」：按周汇总全平台销量，避免每专辑一行导致前端图表标签与数据长度不一致
+    query = `
+    SELECT
+      strftime('%Y-%W', o.created_at) as week,
+      date(o.created_at, '-' || strftime('%w', o.created_at) || ' days') as week_start,
+      date(o.created_at, '+' || (6 - strftime('%w', o.created_at)) || ' days') as week_end,
+      NULL as album_id,
+      '' as title,
+      '' as artist,
+      COUNT(oi.order_item_id) as units_sold,
+      SUM(oi.quantity) as total_quantity,
+      SUM(oi.quantity * oi.price_at_purchase) as revenue
+    ${baseFrom}
+    GROUP BY week
+    ORDER BY week ASC
+    `;
+  }
 
   console.log('Album weekly query:', query);
 
@@ -2845,7 +2866,9 @@ app.get('/api/seller/reports/product-weekly', authenticateToken, requireSeller, 
   if (isNaN(weeks)) weeks = 12;
   weeks = Math.max(Math.min(weeks, 52), 4);
   const days = weeks * 7;
-  const albumId = req.query.album_id ? parseInt(req.query.album_id) : null;
+  const rawAlbumId = req.query.album_id;
+  const parsed = rawAlbumId != null && rawAlbumId !== '' ? parseInt(String(rawAlbumId), 10) : NaN;
+  const albumId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 
   console.log(`Product weekly: weeks=${weeks}, days=${days}, albumId=${albumId}`);
 
@@ -3079,7 +3102,7 @@ app.get('/api/seller/reports/weekly-comparison', authenticateToken, requireSelle
 
         console.log('Genre comparison query:', genreQuery);
 
-        // Query for album sales ranking (current week only)
+        // Query for album sales ranking (current week only) — 全量参与排序，便于取销量最低专辑
         const albumRankingQuery = `
           SELECT
             a.album_id,
@@ -3096,7 +3119,6 @@ app.get('/api/seller/reports/weekly-comparison', authenticateToken, requireSelle
             AND o.created_at >= date('now', '-' || '7' || ' days')
           GROUP BY a.album_id
           ORDER BY units_sold DESC, revenue DESC
-          LIMIT 10
         `;
 
         console.log('Album ranking query:', albumRankingQuery);
@@ -3230,11 +3252,20 @@ app.get('/api/seller/reports/weekly-comparison', authenticateToken, requireSelle
 
               console.log('Album ranking query returned rows:', albumRows.length);
 
-              // Get best selling (top 3) and worst selling (bottom 3)
+              // 最畅销：本周销量最高的 3 张；最不畅销：本周有销量的专辑中销量最低的 3 张（按销量、收入升序）
+              const bestSelling = albumRows.slice(0, 3);
+              const ascBySales = [...albumRows].sort((a, b) => {
+                const ua = Number(a.units_sold) || 0;
+                const ub = Number(b.units_sold) || 0;
+                if (ua !== ub) return ua - ub;
+                return (Number(a.revenue) || 0) - (Number(b.revenue) || 0);
+              });
+              const worstSelling = ascBySales.slice(0, 3);
+
               const albumRanking = {
-                bestSelling: albumRows.slice(0, 3),
-                worstSelling: albumRows.length > 3 ? albumRows.slice(-3).reverse() : [],
-                allSorted: albumRows // Full sorted list for dropdown selection
+                bestSelling,
+                worstSelling,
+                allSorted: albumRows
               };
 
               // Fetch condition analysis data

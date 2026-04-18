@@ -24,6 +24,11 @@
     }
   },
   "locale": "zh-TW",
+  "conditionGrade": {
+    "mint": "99新",
+    "nearmint": "85新",
+    "good": "75新"
+  },
   "home": {
     "latestUpdates": "最新動態",
     "viewMore": "查看更多",
@@ -336,9 +341,10 @@
     "description": "商品描述",
     "addedToCart": "已加入購物車",
     "addToCartError": "加入購物車失敗",
-    "buyNow": "立即購買"
+    "buyNow": "立即購買",
+    "noDescription": "暫無描述"
   },
-  "albumDetail": {
+   "albumDetail": {
     "tracklist": "曲目列表",
     "availableCopies": "可用唱片",
     "noProducts": "該專輯暫無唱片",
@@ -368,9 +374,9 @@
       "productId": "product_id"
     },
     "conditions": {
-      "mint": "完美品",
-      "nearmint": "近完美品",
-      "good": "良好",
+      "mint": "99新",
+      "nearmint": "85新",
+      "good": "75新",
       "copies": "件"
     }
   },
@@ -673,9 +679,9 @@
     "minImagesRequired": "請至少上傳3張圖片",
     "updateProduct": "更新商品",
     "addProduct": "添加商品",
-    "mint": "完美品",
-    "nearMint": "近完美品",
-    "good": "良好",
+    "mint": "99新",
+    "nearMint": "85新",
+    "good": "75新",
     "rock": "搖滾",
     "pop": "流行",
     "jazz": "爵士",
@@ -730,6 +736,11 @@
       "genreWeekly": "類別週銷量對比",
       "albumTrend": "專輯週銷量趨勢",
       "productSales": "產品週銷量詳情",
+      "productSalesRowsTotal": "共 {count} 筆",
+      "productSalesPerPage": "每頁筆數",
+      "productSalesPageInfo": "第 {current} / {total} 頁",
+      "productSalesPrev": "上一頁",
+      "productSalesNext": "下一頁",
       "selectAlbum": "選擇專輯",
       "allAlbums": "所有專輯",
       "album": "專輯",
@@ -757,9 +768,9 @@
       "album": "專輯",
       "artist": "藝術家",
       "conditionAnalysis": "產品條件分析",
-      "Mint": "全新",
-      "NearMint": "近新",
-      "Good": "良好",
+      "Mint": "99新",
+      "NearMint": "85新",
+      "Good": "75新",
       "sales": "銷量"
     }
   },
@@ -808,7 +819,7 @@
       "q1": "如何購買唱片？",
       "a1": "瀏覽專輯頁面，選擇你想要的成色版本，點擊進入商品詳情後加入購物車或直接購買，然後完成結算即可。",
       "q2": "唱片的成色如何定義？",
-      "a2": "我們的唱片分為三個等級：完美品（全新或幾乎完美）、近完美品（輕微使用痕跡，播放正常）、良好（有明顯使用痕跡，但播放正常）。",
+      "a2": "我們的唱片分為三個等級：99新（Mint）、85新（Near Mint）、75新（Good），對應輕微至明顯的使用痕跡，均以可正常播放為前提。",
       "q3": "如何聯繫賣家？",
       "a3": "你可以透過訂單詳情頁的聯繫方式與賣家溝通，或者在商品頁面留言詢問。",
       "q4": "支持什麼支付方式？",

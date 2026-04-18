@@ -93,7 +93,7 @@
               <img :src="item.image" :alt="item.name" class="item-image">
               <div class="item-details">
                 <h4>{{ item.name }}</h4>
-                <p class="item-condition">{{ item.condition }}</p>
+                <p class="item-condition">{{ formatCondition(item.condition) }}</p>
                 <p class="item-price">¥{{ formatMoney(item.price) }}</p>
               </div>
               <div class="item-quantity">x{{ item.quantity }}</div>
@@ -149,9 +149,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { isAuthenticated } from '../services/authService'
+import { formatConditionLabel } from '../utils/conditionLabel'
 
 const router = useRouter()
 const { t } = useI18n()
+
+const formatCondition = (c) => formatConditionLabel(t, c)
 
 const orders = ref([])
 const isLoading = ref(true)

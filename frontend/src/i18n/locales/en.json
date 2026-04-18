@@ -24,6 +24,11 @@
     }
   },
   "locale": "en",
+  "conditionGrade": {
+    "mint": "Mint",
+    "nearmint": "Near Mint",
+    "good": "Good"
+  },
   "home": {
     "latestUpdates": "Latest Updates",
     "viewMore": "View More",
@@ -333,7 +338,8 @@
     "description": "Description",
     "addedToCart": "Added to cart successfully",
     "addToCartError": "Failed to add to cart",
-    "buyNow": "Buy Now"
+    "buyNow": "Buy Now",
+    "noDescription": "No description"
   },
   "albumDetail": {
     "tracklist": "Tracklist",
@@ -727,6 +733,11 @@
       "genreWeekly": "Genre Weekly Sales Comparison",
       "albumTrend": "Album Weekly Sales Trend",
       "productSales": "Product Sales by Week",
+      "productSalesRowsTotal": "{count} rows total",
+      "productSalesPerPage": "Rows per page",
+      "productSalesPageInfo": "Page {current} / {total}",
+      "productSalesPrev": "Previous",
+      "productSalesNext": "Next",
       "selectAlbum": "Select Album",
       "allAlbums": "All Albums",
       "album": "Album",

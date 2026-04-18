@@ -76,7 +76,7 @@
                 />
                 <div class="product-details">
                   <h3 class="product-name">{{ item.name }}</h3>
-                  <p class="product-condition">{{ item.condition }}</p>
+                  <p class="product-condition">{{ formatCondition(item.condition) }}</p>
                   <p v-if="isSoldOut(item)" class="sold-out">已售罄</p>
                 </div>
               </div>
@@ -160,12 +160,15 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getRecordPlaceholder } from '../utils/recordPlaceholder'
+import { formatConditionLabel } from '../utils/conditionLabel'
 import { getCart, removeFromCart, updateCartQuantity } from '../services/cartService'
 import { isAuthenticated } from '../services/authService'
 import { setCheckoutDraft } from '../services/orderService'
 
 const router = useRouter()
 const { t } = useI18n()
+
+const formatCondition = (c) => formatConditionLabel(t, c)
 
 const cartItems = ref([])
 const isLoading = ref(false)

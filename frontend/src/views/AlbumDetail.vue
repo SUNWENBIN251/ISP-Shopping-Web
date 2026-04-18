@@ -69,7 +69,7 @@
             class="condition-group"
           >
             <div class="condition-header">
-              <h3 class="condition-title">{{ $t(`albumDetail.conditions.${condition.toLowerCase().replace(' ', '')}`) || condition }}</h3>
+              <h3 class="condition-title">{{ formatCondition(condition) }}</h3>
               <span class="condition-count">{{ getProductsByCondition(condition).length }} {{ $t('albumDetail.conditions.copies') }}</span>
             </div>
 
@@ -92,7 +92,7 @@
                   />
                 </div>
                 <div class="product-info">
-                  <p class="product-condition">{{ $t(`albumDetail.conditions.${product.condition.toLowerCase().replace(' ', '')}`) || product.condition }}</p>
+                  <p class="product-condition">{{ formatCondition(product.condition) }}</p>
                   <p class="product-price">¥{{ product.price.toFixed(2) }}</p>
                   <p class="product-description care-hide">{{ product.description || $t('productDetail.noDescription') || 'No description' }}</p>
                   <p class="care-only" style="margin-top: var(--spacing-xs); color: var(--color-primary); font-weight: 800;">
@@ -113,12 +113,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getRecordPlaceholder } from '../utils/recordPlaceholder'
+import { formatConditionLabel } from '../utils/conditionLabel'
 import { getAlbumWithProducts } from '../services/albumService'
 import { getAlbumReviews, getAlbumAverageRating } from '../services/reviewService'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+const formatCondition = (c) => formatConditionLabel(t, c)
 
 // State
 const isLoading = ref(true)
