@@ -30,9 +30,9 @@
       <!-- Checkout Form -->
       <div v-else class="checkout-content">
         <div class="care-only care-banner">
-          <div class="title">💰 结算提示</div>
+          <div class="title">💰 {{ $t('careMode.checkoutTitle') }}</div>
           <div class="desc">
-            请先确认收货地址与支付方式，然后点击底部“提交订单”。金额会自动计算。
+            {{ $t('careMode.checkoutDescription') }}
           </div>
         </div>
         <div class="checkout-grid">

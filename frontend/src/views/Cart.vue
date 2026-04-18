@@ -30,10 +30,8 @@
       <!-- 购物车有商品 -->
       <div v-else class="cart-content">
         <div class="care-only care-banner">
-          <div class="title">🛒 购物车使用方法</div>
-          <div class="desc">
-            每件商品都是孤品：数量只能选 <strong>0 或 1</strong>。只有数量为 <strong>1</strong> 的商品会进入结账。
-          </div>
+          <div class="title">🛒 {{ $t('careMode.cartTitle') }}</div>
+          <div class="desc" v-html="$t('careMode.cartDescription')"></div>
         </div>
         <div class="cart-items">
           <div class="cart-header">

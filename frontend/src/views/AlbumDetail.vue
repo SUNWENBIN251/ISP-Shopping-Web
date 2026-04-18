@@ -54,8 +54,8 @@
         <h2 class="section-title">{{ $t('albumDetail.availableCopies') }}</h2>
 
         <div class="care-only care-banner">
-          <div class="title">👇 请选择成色并进入购买</div>
-          <div class="desc">点任意一条商品卡片，就会进入商品详情页（可以加入购物车或直接购买）。</div>
+          <div class="title">👇 {{ $t('careMode.albumDetailTitle') }}</div>
+          <div class="desc">{{ $t('careMode.albumDetailDescription') }}</div>
         </div>
         
         <div v-if="products.length === 0" class="no-products">

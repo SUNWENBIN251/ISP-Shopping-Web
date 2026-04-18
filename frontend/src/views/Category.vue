@@ -7,8 +7,8 @@
       </div>
 
       <div class="care-only care-banner">
-        <div class="title">🧭 先选一个分类</div>
-        <div class="desc">点进分类后，会自动带你去对应的唱片列表。</div>
+        <div class="title">🧭{{ $t('careMode.categoryTitle') }}<</div>
+        <div class="desc">{{ $t('careMode.categoryDescription') }}</div>
       </div>
 
       <!-- Loading State -->
