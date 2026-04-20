@@ -728,7 +728,7 @@
             <div v-for="week in getGroupedProductSalesByWeek()" :key="week.week_num" class="product-week-section">
               <h4 class="week-header">
                 {{ week.week_label }}
-                <small>{{ week.week_start }} 至 {{ week.week_end }}</small>
+                <small>{{ week.week_start }} {{ $t('seller.reports.dateRangeTo') }} {{ week.week_end }}</small>
               </h4>
               <table class="sales-table">
                 <thead>

@@ -772,7 +772,8 @@
       "Mint": "99新",
       "NearMint": "85新",
       "Good": "75新",
-      "sales": "銷量"
+      "sales": "銷量",
+      "dateRangeTo": "至"
     }
   },
   "countries": {

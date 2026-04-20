@@ -769,7 +769,8 @@
       "Mint": "Mint",
       "NearMint": "Near Mint",
       "Good": "Good",
-      "sales": "Sales"
+      "sales": "Sales",
+      "dateRangeTo": "to"
     }
   },
   "countries": {
